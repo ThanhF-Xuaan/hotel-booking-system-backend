@@ -5,14 +5,12 @@ spring:
   application:
     name: hotel-booking-system
 
-  # C?u hình Database
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/hotel_db}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres-db:5432/hotel_db}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:123456}
     driver-class-name: org.postgresql.Driver
 
-  # C?u hình Hibernate (JPA)
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
@@ -22,7 +20,6 @@ spring:
       hibernate:
         format_sql: true
 
-  # C?u hình Redis
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
@@ -30,4 +27,4 @@ spring:
 
 app:
   upload:
-    dir: ${UPLOAD_DIR:./uploads}
+    dir: ${UPLOAD_DIR:/app/uploads}
