@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,9 +18,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
+import com.hotel.booking.modules.inventory.enums.FeatureCategory;
 
 @Entity
-@Table(name = "room_features")
+@Table(
+    name = "room_features",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_room_feature_name", columnNames = {"name"})
+    }
+)
 @Getter
 @Setter
 @Builder
@@ -41,8 +48,9 @@ public class RoomFeature extends BaseEntity {
     @Column(name = "icon")
     String icon;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "category", length = 50)
-    String category;
+    FeatureCategory category;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)

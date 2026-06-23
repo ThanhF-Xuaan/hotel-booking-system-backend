@@ -36,9 +36,9 @@ public class Guest extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "public_id", updatable = false, nullable = false)
-    UUID publicId;
+    @Builder.Default
+    @Column(name = "public_id", updatable = false, nullable = false, unique = true)
+    UUID publicId = java.util.UUID.randomUUID();
 
     @Column(name = "first_name", nullable = false, length = 100)
     String firstName;

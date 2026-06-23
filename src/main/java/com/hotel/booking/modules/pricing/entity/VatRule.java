@@ -58,4 +58,7 @@ public class VatRule extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
     ActiveStatus status;
+
+    @Column(name = "is_deleted")
+    Boolean isDeleted = false;
 }

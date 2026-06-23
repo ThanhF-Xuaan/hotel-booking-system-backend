@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +20,12 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 @Entity
-@Table(name = "room_types")
+@Table(
+    name = "room_types",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_room_type_name", columnNames = {"name"})
+    }
+)
 @Getter
 @Setter
 @Builder
@@ -37,9 +43,6 @@ public class RoomType extends BaseEntity {
 
     @Column(name = "name", nullable = false, length = 150)
     String name;
-
-    @Column(name = "capacity", nullable = false)
-    Short capacity;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)

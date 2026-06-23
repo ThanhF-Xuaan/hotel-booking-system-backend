@@ -8,4 +8,6 @@ import java.util.List;
 @Repository
 public interface RoleRepository extends JpaRepository<Role, Short> {
     List<Role> findAllByIsDeletedFalse();
+    boolean existsByCode(String code);
+    boolean existsByCodeAndIdNot(String code, Short id);
 }

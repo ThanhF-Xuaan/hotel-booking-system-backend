@@ -38,9 +38,9 @@ public class Staff extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "public_id", updatable = false, nullable = false)
-    UUID publicId;
+    @Builder.Default
+    @Column(name = "public_id", updatable = false, nullable = false, unique = true)
+    UUID publicId = java.util.UUID.randomUUID();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hotel_id")

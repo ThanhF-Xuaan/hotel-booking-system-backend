@@ -48,6 +48,30 @@ public class HotelRoomType extends BaseEntity {
     @JoinColumn(name = "room_type_id", nullable = false)
     RoomType roomType;
 
+    // Sức chứa tiêu chuẩn (Làm mốc tính base_price)
+    @Column(name = "standard_adults", nullable = false)
+    Integer standardAdults;
+
+    @Column(name = "standard_children", nullable = false)
+    Integer standardChildren;
+
+    // Sức chứa tối đa của từng đối tượng (Validation)
+    @Column(name = "max_adults", nullable = false)
+    Integer maxAdults;
+
+    @Column(name = "max_children", nullable = false)
+    Integer maxChildren;
+
+    @Column(name = "max_infants", nullable = false)
+    Integer maxInfants;
+
+    // Giới hạn phòng & Giường phụ
+    @Column(name = "max_total_guests", nullable = false)
+    Integer maxTotalGuests;
+
+    @Column(name = "max_extra_beds", nullable = false)
+    Integer maxExtraBeds;
+
     @Column(name = "base_price", nullable = false, precision = 15, scale = 2)
     BigDecimal basePrice;
 
@@ -57,4 +81,7 @@ public class HotelRoomType extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
     ActiveStatus status;
+
+    @Column(name = "is_deleted")
+    Boolean isDeleted = false;
 }
