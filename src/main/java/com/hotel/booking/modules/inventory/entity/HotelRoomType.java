@@ -72,6 +72,9 @@ public class HotelRoomType extends BaseEntity {
     @Column(name = "max_extra_beds", nullable = false)
     Integer maxExtraBeds;
 
+    @Column(name = "max_beds", nullable = false)
+    Integer maxBeds;
+
     @Column(name = "base_price", nullable = false, precision = 15, scale = 2)
     BigDecimal basePrice;
 

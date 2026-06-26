@@ -4,8 +4,14 @@ import com.hotel.booking.modules.inventory.entity.RoomInstance;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RoomInstanceRepository extends JpaRepository<RoomInstance, Integer> {
     List<RoomInstance> findAllByIsDeletedFalse();
+    Optional<RoomInstance> findByIdAndIsDeletedFalse(Integer id);
+    long countByHotelRoomTypeIdAndIsDeletedFalse(Integer hotelRoomTypeId);
+    boolean existsByHotelIdAndRoomNumberAndIsDeletedFalse(Short hotelId, String roomNumber);
+    boolean existsByHotelIdAndRoomNumberAndIdNotAndIsDeletedFalse(Short hotelId, String roomNumber, Integer id);
+    List<RoomInstance> findAllByHotelIdAndIsDeletedFalse(Short hotelId);
 }
