@@ -6,6 +6,5 @@ public enum ItemType {
     FOOD,
     NON_ALCOHOLIC_DRINK,
     ALCOHOLIC_DRINK,
-    EXTRA_BED,
     OTHER
 }

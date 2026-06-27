@@ -26,6 +26,7 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "surcharge_rules")
@@ -60,11 +61,11 @@ public class SurchargeRule extends BaseEntity {
     @Column(name = "adjustment_value", nullable = false, precision = 15, scale = 2)
     BigDecimal adjustmentValue;
 
-    @Column(name = "min_age")
-    Short minAge;
+    @Column(name = "start_date", nullable = false)
+    LocalDate startDate;
 
-    @Column(name = "max_age")
-    Short maxAge;
+    @Column(name = "end_date", nullable = false)
+    LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)

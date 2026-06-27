@@ -4,7 +4,6 @@ import com.hotel.booking.core.entity.BaseEntity;
 import com.hotel.booking.core.enums.ActiveStatus;
 import com.hotel.booking.modules.inventory.entity.HotelRoomType;
 import com.hotel.booking.modules.pricing.enums.AdjustmentType;
-import com.hotel.booking.modules.pricing.enums.PricingRuleType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -49,9 +48,9 @@ public class PricingRule extends BaseEntity {
     @JoinColumn(name = "holiday_calendar_id")
     HolidayCalendar holidayCalendar;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "rule_type", nullable = false, length = 50)
-    PricingRuleType ruleType;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "rule_type", referencedColumnName = "code", nullable = false)
+    PricingRuleTypeConfig ruleType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "adjustment_type", nullable = false, length = 20)
@@ -65,9 +64,6 @@ public class PricingRule extends BaseEntity {
 
     @Column(name = "end_date", nullable = false)
     LocalDate endDate;
-
-    @Column(name = "priority", nullable = false)
-    Short priority;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)

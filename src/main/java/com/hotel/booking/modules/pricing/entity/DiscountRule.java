@@ -4,7 +4,6 @@ import com.hotel.booking.core.entity.BaseEntity;
 import com.hotel.booking.core.enums.ActiveStatus;
 import com.hotel.booking.modules.inventory.entity.HotelRoomType;
 import com.hotel.booking.modules.pricing.enums.AdjustmentType;
-import com.hotel.booking.modules.pricing.enums.DiscountRuleType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,6 +24,7 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "discount_rules")
@@ -44,9 +44,13 @@ public class DiscountRule extends BaseEntity {
     @JoinColumn(name = "hotel_room_type_id", nullable = false)
     HotelRoomType hotelRoomType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "rule_type", nullable = false, length = 50)
-    DiscountRuleType ruleType;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "campaign_id")
+    Campaign campaign;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "rule_type", referencedColumnName = "code", nullable = false)
+    DiscountRuleTypeConfig ruleType;
 
     @Column(name = "min_nights")
     Short minNights;
@@ -57,6 +61,12 @@ public class DiscountRule extends BaseEntity {
 
     @Column(name = "discount_value", nullable = false, precision = 15, scale = 2)
     BigDecimal discountValue;
+
+    @Column(name = "start_date", nullable = false)
+    LocalDate startDate;
+
+    @Column(name = "end_date", nullable = false)
+    LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
