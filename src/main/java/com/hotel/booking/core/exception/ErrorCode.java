@@ -9,9 +9,15 @@ import lombok.Getter;
 public enum ErrorCode {
         UNCATEGORIZED_EXCEPTION(9999, "Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR),
         INVALID_KEY(1001, "Uncategorized error", HttpStatus.BAD_REQUEST),
-        USER_EXISTED(1002, "User existed", HttpStatus.BAD_REQUEST),
+        STAFF_USERNAME_EXISTED(1002, "Username is already taken", HttpStatus.BAD_REQUEST),
+        STAFF_USERNAME_NOT_BLANK(1003, "Username must not be blank", HttpStatus.BAD_REQUEST),
+        STAFF_USERNAME_MIN_LENGTH(1004, "Username must be at least 3 characters", HttpStatus.BAD_REQUEST),
+        STAFF_PASSWORD_MIN_LENGTH(1005, "Password must be at least 8 characters", HttpStatus.BAD_REQUEST),
         UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
         UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
+        STAFF_NOT_FOUND(1008, "Staff member not found", HttpStatus.NOT_FOUND),
+
+        STAFF_PASSWORD_NOT_BLANK(9004, "Password must not be blank", HttpStatus.BAD_REQUEST),
         ROLE_NOT_FOUND(2001, "Role not found", HttpStatus.NOT_FOUND),
         ROLE_CODE_EXISTED(2002, "Role code already existed", HttpStatus.BAD_REQUEST),
         ROLE_NAME_NOT_BLANK(2003, "Role name must not be blank", HttpStatus.BAD_REQUEST),
@@ -232,6 +238,11 @@ public enum ErrorCode {
         DISCOUNT_RULE_OVERLAPPING(8313, "Discount rule dates overlap with an existing rule", HttpStatus.BAD_REQUEST),
         DISCOUNT_RULE_TYPE_NOT_FOUND(8314, "Discount rule type configuration not found", HttpStatus.NOT_FOUND),
         DISCOUNT_RULE_TYPE_ALREADY_EXISTS(8315, "Discount rule type configuration with this code already exists", HttpStatus.BAD_REQUEST),
+        DISCOUNT_RULE_DUPLICATE_CONDITIONS(8316, "Duplicate discount conditions found in tiers", HttpStatus.BAD_REQUEST),
+        DISCOUNT_RULE_ROOM_TYPES_REQUIRED(8317, "Applied room type IDs must not be empty", HttpStatus.BAD_REQUEST),
+        DISCOUNT_RULE_TIERS_REQUIRED(8318, "Discount tiers must not be empty", HttpStatus.BAD_REQUEST),
+        DISCOUNT_RULE_TIER_CONDITIONS_NOT_NULL(8319, "Tier conditions must not be null", HttpStatus.BAD_REQUEST),
+        DISCOUNT_RULE_DUPLICATE_TIER_CONDITION(8320, "A tier with the exact same condition already exists for this room type during the specified date range", HttpStatus.BAD_REQUEST),
 
         CAMPAIGN_NOT_FOUND(8400, "Campaign not found", HttpStatus.NOT_FOUND),
         CAMPAIGN_INVALID_DATE_RANGE(8401, "Campaign start date must be before or equal to end date", HttpStatus.BAD_REQUEST),
@@ -256,11 +267,6 @@ public enum ErrorCode {
         SURCHARGE_RULE_OVERLAPPING(8511, "Surcharge rule dates overlap with an existing rule", HttpStatus.BAD_REQUEST),
 
         PRICING_RULE_OVERLAPPING(8600, "Pricing rule dates overlap with an existing rule", HttpStatus.BAD_REQUEST),
-
-        STAFF_NOT_FOUND(9001, "Staff member not found", HttpStatus.NOT_FOUND),
-        STAFF_USERNAME_EXISTED(9002, "Username is already taken", HttpStatus.BAD_REQUEST),
-        STAFF_USERNAME_NOT_BLANK(9003, "Username must not be blank", HttpStatus.BAD_REQUEST),
-        STAFF_PASSWORD_NOT_BLANK(9004, "Password must not be blank", HttpStatus.BAD_REQUEST),
         ;
 
         ErrorCode(int code, String message, HttpStatusCode statusCode) {

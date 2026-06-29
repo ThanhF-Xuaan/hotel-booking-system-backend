@@ -6,3 +6,7 @@ spring:
 
 server:
   port: 8080
+
+jwt:
+  signerKey: ${JWT_SECRET:8e18c9e3f2cab32b039df13a3c1ee6def879acad674f279daba9066d6dd62e5a}
+  expiration: ${JWT_EXPIRATION_MS:86400000} # Có fallback mặc định 24h nếu quên set biến môi trường

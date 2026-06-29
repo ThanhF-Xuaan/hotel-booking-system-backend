@@ -3,6 +3,7 @@ package com.hotel.booking.modules.pricing.entity;
 import com.hotel.booking.core.entity.BaseEntity;
 import com.hotel.booking.core.enums.ActiveStatus;
 import com.hotel.booking.modules.inventory.entity.HotelRoomType;
+import com.hotel.booking.modules.pricing.entity.pojo.DiscountCondition;
 import com.hotel.booking.modules.pricing.enums.AdjustmentType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,6 +23,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -52,8 +55,9 @@ public class DiscountRule extends BaseEntity {
     @JoinColumn(name = "rule_type", referencedColumnName = "code", nullable = false)
     DiscountRuleTypeConfig ruleType;
 
-    @Column(name = "min_nights")
-    Short minNights;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "conditions", nullable = false, columnDefinition = "jsonb")
+    DiscountCondition conditions;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "discount_type", nullable = false, length = 20)

@@ -27,9 +27,9 @@ public class DiscountRuleController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Tạo mới quy tắc giảm giá", description = "Cấu hình quy tắc giảm giá cho một loại phòng khách sạn.")
-    public ApiResponse<DiscountRuleResponse> createDiscountRule(@Valid @RequestBody DiscountRuleCreateRequest request) {
-        return ApiResponse.<DiscountRuleResponse>builder()
+    @Operation(summary = "Tạo mới quy tắc giảm giá theo tầng", description = "Cấu hình quy tắc giảm giá theo tầng cho một danh sách loại phòng khách sạn.")
+    public ApiResponse<List<DiscountRuleResponse>> createDiscountRule(@Valid @RequestBody DiscountRuleCreateRequest request) {
+        return ApiResponse.<List<DiscountRuleResponse>>builder()
                 .result(discountRuleService.createDiscountRule(request))
                 .build();
     }

@@ -1,14 +1,10 @@
 package com.hotel.booking.modules.pricing.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hotel.booking.core.enums.ActiveStatus;
 import com.hotel.booking.modules.pricing.enums.AdjustmentType;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
@@ -20,6 +16,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Thông tin chi tiết quy tắc giảm giá phản hồi cho client")
 public class DiscountRuleResponse {
 
@@ -29,14 +26,17 @@ public class DiscountRuleResponse {
     @Schema(description = "ID của loại phòng khách sạn được cấu hình", example = "1")
     Integer hotelRoomTypeId;
 
+    @Schema(description = "Tên của loại phòng khách sạn được cấu hình", example = "Deluxe Room")
+    String hotelRoomTypeName;
+
     @Schema(description = "ID của chiến dịch liên kết (nếu có)", example = "1")
     Integer campaignId;
 
     @Schema(description = "Mã loại quy tắc giảm giá", example = "LONG_STAY")
     String ruleTypeCode;
 
-    @Schema(description = "Số đêm tối thiểu áp dụng", example = "3")
-    Short minNights;
+    @Schema(description = "Các điều kiện đi kèm của quy tắc", requiredMode = Schema.RequiredMode.REQUIRED)
+    DiscountConditionResponse conditions;
 
     @Schema(description = "Loại giảm giá (PERCENT, FIXED)", example = "PERCENT")
     AdjustmentType discountType;

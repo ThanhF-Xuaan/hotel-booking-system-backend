@@ -17,6 +17,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,7 @@ public class StaffServiceImpl implements StaffService {
     StaffMapper staffMapper;
     HotelRepository hotelRepository;
     RoleRepository roleRepository;
+    PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
@@ -58,6 +60,11 @@ public class StaffServiceImpl implements StaffService {
         Staff staff = staffMapper.toEntity(request);
         staff.setHotel(hotel);
         staff.setRole(role);
+
+        // Encode password if present
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            staff.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
 
         // Concatenate firstName and lastName to fullName
         String firstName = request.getFirstName() != null ? request.getFirstName().trim() : "";
@@ -106,7 +113,7 @@ public class StaffServiceImpl implements StaffService {
         }
 
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            staff.setPassword(request.getPassword());
+            staff.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
         staffMapper.updateEntity(request, staff);

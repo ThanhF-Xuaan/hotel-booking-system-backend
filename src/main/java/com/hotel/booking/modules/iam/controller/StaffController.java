@@ -11,7 +11,9 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +22,7 @@ import java.util.List;
 @RequestMapping("/hotel/api/v1/iam/staffs")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 @Tag(name = "IAM - Staff Management", description = "Các API quản lý nhân viên (Staff)")
 public class StaffController {
 
@@ -27,7 +30,7 @@ public class StaffController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Tạo mới nhân viên", description = "Tạo mới một nhân viên với thông tin vai trò, khách sạn, v.v. Mật khẩu lưu dạng plain text.")
+    @Operation(summary = "Tạo mới nhân viên", description = "Tạo mới một nhân viên với thông tin vai trò, khách sạn, v.v. Mật khẩu sẽ được mã hóa an toàn bằng BCrypt trước khi lưu xuống database.")
     public ApiResponse<StaffResponse> createStaff(@Valid @RequestBody StaffCreationRequest request) {
         return ApiResponse.<StaffResponse>builder()
                 .result(staffService.createStaff(request))
@@ -37,6 +40,11 @@ public class StaffController {
     @GetMapping
     @Operation(summary = "Lấy danh sách tất cả nhân viên", description = "Trả về danh sách nhân viên chưa bị xóa mềm trong hệ thống.")
     public ApiResponse<List<StaffResponse>> getAllStaffs() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        log.info("Username: {}", authentication.getName());
+        authentication.getAuthorities().forEach(grantedAuthority -> log.info(grantedAuthority.getAuthority()));
+
         return ApiResponse.<List<StaffResponse>>builder()
                 .result(staffService.getAllStaffs())
                 .build();
@@ -51,7 +59,7 @@ public class StaffController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Cập nhật nhân viên", description = "Cập nhật thông tin nhân viên theo ID. Không cho phép sửa username.")
+    @Operation(summary = "Cập nhật nhân viên", description = "Cập nhật thông tin nhân viên theo ID. Không cho phép sửa username. Mật khẩu mới (nếu truyền) sẽ được mã hóa an toàn bằng BCrypt.")
     public ApiResponse<StaffResponse> updateStaff(
             @PathVariable Integer id,
             @Valid @RequestBody StaffUpdateRequest request) {

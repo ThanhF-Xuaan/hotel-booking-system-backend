@@ -1,15 +1,12 @@
 package com.hotel.booking.modules.pricing.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hotel.booking.core.enums.ActiveStatus;
 import com.hotel.booking.modules.pricing.enums.AdjustmentType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
@@ -21,6 +18,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Yêu cầu cập nhật quy tắc giảm giá (DiscountRule)")
 public class DiscountRuleUpdateRequest {
 
@@ -35,8 +33,10 @@ public class DiscountRuleUpdateRequest {
     @Schema(description = "Mã loại quy tắc giảm giá", example = "LONG_STAY", requiredMode = Schema.RequiredMode.REQUIRED)
     String ruleTypeCode;
 
-    @Schema(description = "Số đêm tối thiểu (chỉ truyền khi ruleType = LONG_STAY)", example = "3")
-    Short minNights;
+    @Valid
+    @NotNull(message = "DISCOUNT_RULE_TIER_CONDITIONS_NOT_NULL")
+    @Schema(description = "Các điều kiện áp dụng", requiredMode = Schema.RequiredMode.REQUIRED)
+    DiscountConditionRequest conditions;
 
     @NotNull(message = "DISCOUNT_RULE_DISCOUNT_TYPE_NOT_NULL")
     @Schema(description = "Loại giảm giá (PERCENT, FIXED)", example = "PERCENT", requiredMode = Schema.RequiredMode.REQUIRED)

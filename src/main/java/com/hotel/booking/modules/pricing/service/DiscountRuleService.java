@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface DiscountRuleService {
 
-    DiscountRuleResponse createDiscountRule(DiscountRuleCreateRequest request);
+    List<DiscountRuleResponse> createDiscountRule(DiscountRuleCreateRequest request);
 
     DiscountRuleResponse getDiscountRuleById(Integer id);
 

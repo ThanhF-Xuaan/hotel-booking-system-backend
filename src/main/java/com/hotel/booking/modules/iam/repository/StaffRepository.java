@@ -19,4 +19,6 @@ public interface StaffRepository extends JpaRepository<Staff, Integer> {
     Optional<Staff> findActiveStaffById(@Param("id") Integer id);
 
     boolean existsByUsernameAndIsDeletedFalse(String username);
+
+    Optional<Staff> findByUsernameAndIsDeletedFalse(String username);
 }

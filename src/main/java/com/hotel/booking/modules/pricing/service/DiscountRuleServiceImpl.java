@@ -1,16 +1,18 @@
 package com.hotel.booking.modules.pricing.service;
 
-import com.hotel.booking.core.enums.ActiveStatus;
 import com.hotel.booking.core.exception.AppException;
 import com.hotel.booking.core.exception.ErrorCode;
 import com.hotel.booking.modules.inventory.entity.HotelRoomType;
 import com.hotel.booking.modules.inventory.repository.HotelRoomTypeRepository;
+import com.hotel.booking.modules.pricing.dto.request.DiscountConditionRequest;
 import com.hotel.booking.modules.pricing.dto.request.DiscountRuleCreateRequest;
 import com.hotel.booking.modules.pricing.dto.request.DiscountRuleUpdateRequest;
+import com.hotel.booking.modules.pricing.dto.request.DiscountTierRequest;
 import com.hotel.booking.modules.pricing.dto.response.DiscountRuleResponse;
 import com.hotel.booking.modules.pricing.entity.Campaign;
 import com.hotel.booking.modules.pricing.entity.DiscountRule;
 import com.hotel.booking.modules.pricing.entity.DiscountRuleTypeConfig;
+import com.hotel.booking.modules.pricing.entity.pojo.DiscountCondition;
 import com.hotel.booking.modules.pricing.mapper.DiscountRuleMapper;
 import com.hotel.booking.modules.pricing.repository.CampaignRepository;
 import com.hotel.booking.modules.pricing.repository.DiscountRuleRepository;
@@ -24,7 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -41,35 +47,64 @@ public class DiscountRuleServiceImpl implements DiscountRuleService {
 
     @Override
     @Transactional
-    public DiscountRuleResponse createDiscountRule(DiscountRuleCreateRequest request) {
-        log.info("Creating new discount rule for room type ID: {}", request.getHotelRoomTypeId());
+    public List<DiscountRuleResponse> createDiscountRule(DiscountRuleCreateRequest request) {
+        log.info("Creating tiered discount rules for room type IDs: {}", request.getAppliedRoomTypeIds());
 
+        // 1. In-memory duplicate tier checks within the request payload itself
+        validateDuplicateTiers(request.getTiers(), request.getRuleTypeCode());
+
+        // 2. Resolve Common Entities & Validate Dates
         DiscountRuleTypeConfig ruleTypeConfig = discountRuleTypeConfigRepository.findByCodeAndIsDeletedFalse(request.getRuleTypeCode())
                 .orElseThrow(() -> new AppException(ErrorCode.DISCOUNT_RULE_TYPE_NOT_FOUND));
 
-        HotelRoomType roomType = validateAndGetRoomType(request.getHotelRoomTypeId());
         Campaign campaign = validateAndGetCampaign(request.getCampaignId());
         validateDiscountRuleDates(request.getStartDate(), request.getEndDate());
         validateCampaignContainment(campaign, request.getStartDate(), request.getEndDate());
-        validateDiscountRuleCommon(ruleTypeConfig.getCode(), request.getMinNights(), request.getDiscountValue());
 
-        if (discountRuleRepository.existsOverlapping(request.getHotelRoomTypeId(), ruleTypeConfig.getCode(), request.getStartDate(), request.getEndDate(), null)) {
-            throw new AppException(ErrorCode.DISCOUNT_RULE_OVERLAPPING);
+        // 3. Fetch applied room types in bulk to prevent N+1 issues
+        if (request.getAppliedRoomTypeIds() == null || request.getAppliedRoomTypeIds().isEmpty()) {
+            throw new AppException(ErrorCode.DISCOUNT_RULE_ROOM_TYPES_REQUIRED);
+        }
+        List<HotelRoomType> roomTypes = hotelRoomTypeRepository.findAllByIdInAndIsDeletedFalse(request.getAppliedRoomTypeIds());
+        if (roomTypes.size() != request.getAppliedRoomTypeIds().size()) {
+            throw new AppException(ErrorCode.HOTEL_ROOM_TYPE_NOT_FOUND);
         }
 
-        DiscountRule discountRule = discountRuleMapper.toEntity(request);
-        discountRule.setHotelRoomType(roomType);
-        discountRule.setCampaign(campaign);
-        discountRule.setRuleType(ruleTypeConfig);
-        discountRule.setIsDeleted(false);
+        // 4. Bulk Fetch Existing Rules that overlap
+        List<DiscountRule> existingRules = discountRuleRepository.findOverlappingRules(
+                request.getAppliedRoomTypeIds(),
+                ruleTypeConfig.getCode(),
+                request.getStartDate(),
+                request.getEndDate()
+        );
 
-        if (discountRule.getStatus() == null) {
-            discountRule.setStatus(ActiveStatus.ACTIVE);
+        // 5. Nested loops to construct entities (outer room types, inner tiers)
+        List<DiscountRule> rulesToSave = new ArrayList<>();
+        for (HotelRoomType roomType : roomTypes) {
+            for (DiscountTierRequest tier : request.getTiers()) {
+                validateDiscountRuleCommon(ruleTypeConfig.getCode(), tier.getConditions(), tier.getDiscountValue());
+
+                // In-memory exact tier check against database rules
+                DiscountCondition mappedCondition = mapToPojo(tier.getConditions());
+                for (DiscountRule existingRule : existingRules) {
+                    if (existingRule.getHotelRoomType().getId().equals(roomType.getId())) {
+                        if (Objects.equals(existingRule.getConditions(), mappedCondition)) {
+                            throw new AppException(ErrorCode.DISCOUNT_RULE_DUPLICATE_TIER_CONDITION);
+                        }
+                    }
+                }
+
+                DiscountRule discountRule = discountRuleMapper.toEntity(request, tier, roomType, campaign, ruleTypeConfig);
+                rulesToSave.add(discountRule);
+            }
         }
 
-        DiscountRule saved = discountRuleRepository.save(discountRule);
-        log.info("Discount rule created successfully with ID: {}", saved.getId());
-        return discountRuleMapper.toResponse(saved);
+        // 6. Bulk database insert
+        List<DiscountRule> savedRules = discountRuleRepository.saveAll(rulesToSave);
+        log.info("Successfully created and saved {} discount rules", savedRules.size());
+
+        // 7. Response generation
+        return discountRuleMapper.toResponseList(savedRules);
     }
 
     @Override
@@ -111,11 +146,9 @@ public class DiscountRuleServiceImpl implements DiscountRuleService {
         Campaign campaign = validateAndGetCampaign(request.getCampaignId());
         validateDiscountRuleDates(request.getStartDate(), request.getEndDate());
         validateCampaignContainment(campaign, request.getStartDate(), request.getEndDate());
-        validateDiscountRuleCommon(ruleTypeConfig.getCode(), request.getMinNights(), request.getDiscountValue());
+        validateDiscountRuleCommon(ruleTypeConfig.getCode(), request.getConditions(), request.getDiscountValue());
 
-        if (discountRuleRepository.existsOverlapping(request.getHotelRoomTypeId(), ruleTypeConfig.getCode(), request.getStartDate(), request.getEndDate(), id)) {
-            throw new AppException(ErrorCode.DISCOUNT_RULE_OVERLAPPING);
-        }
+        // No database-level overlapping checks executed here
 
         discountRuleMapper.updateEntity(request, discountRule);
         discountRule.setHotelRoomType(roomType);
@@ -175,7 +208,7 @@ public class DiscountRuleServiceImpl implements DiscountRuleService {
         }
     }
 
-    private void validateDiscountRuleCommon(String ruleTypeCode, Short minNights, BigDecimal discountValue) {
+    private void validateDiscountRuleCommon(String ruleTypeCode, DiscountConditionRequest conditions, BigDecimal discountValue) {
         if (discountValue == null) {
             throw new AppException(ErrorCode.DISCOUNT_RULE_DISCOUNT_VALUE_NOT_NULL);
         }
@@ -184,13 +217,57 @@ public class DiscountRuleServiceImpl implements DiscountRuleService {
         }
 
         if ("LONG_STAY".equalsIgnoreCase(ruleTypeCode)) {
-            if (minNights == null || minNights < 3) {
+            if (conditions == null || conditions.getMinNights() == null || conditions.getMinNights() < 3) {
                 throw new AppException(ErrorCode.DISCOUNT_RULE_MIN_NIGHTS_REQUIRED);
             }
         } else {
-            if (minNights != null) {
+            if (conditions != null && conditions.getMinNights() != null) {
                 throw new AppException(ErrorCode.DISCOUNT_RULE_MIN_NIGHTS_MUST_BE_NULL);
             }
         }
+    }
+
+    private void validateDuplicateTiers(List<DiscountTierRequest> tiers, String ruleTypeCode) {
+        if (tiers == null || tiers.isEmpty()) {
+            throw new AppException(ErrorCode.DISCOUNT_RULE_TIERS_REQUIRED);
+        }
+
+        // Generic equals check
+        for (int i = 0; i < tiers.size(); i++) {
+            DiscountTierRequest tierI = tiers.get(i);
+            if (tierI.getConditions() == null) {
+                throw new AppException(ErrorCode.DISCOUNT_RULE_TIER_CONDITIONS_NOT_NULL);
+            }
+            for (int j = i + 1; j < tiers.size(); j++) {
+                DiscountTierRequest tierJ = tiers.get(j);
+                if (Objects.equals(tierI.getConditions(), tierJ.getConditions())) {
+                    throw new AppException(ErrorCode.DISCOUNT_RULE_DUPLICATE_CONDITIONS);
+                }
+            }
+        }
+
+        // Specific minNights duplicate check for LONG_STAY
+        if ("LONG_STAY".equalsIgnoreCase(ruleTypeCode)) {
+            Set<Integer> minNightsSet = new HashSet<>();
+            for (DiscountTierRequest tier : tiers) {
+                if (tier.getConditions() != null && tier.getConditions().getMinNights() != null) {
+                    if (!minNightsSet.add(tier.getConditions().getMinNights())) {
+                        throw new AppException(ErrorCode.DISCOUNT_RULE_DUPLICATE_CONDITIONS);
+                    }
+                }
+            }
+        }
+    }
+
+    private DiscountCondition mapToPojo(DiscountConditionRequest request) {
+        if (request == null) {
+            return null;
+        }
+        return DiscountCondition.builder()
+                .minNights(request.getMinNights())
+                .maxNights(request.getMaxNights())
+                .minAdvanceBookingDays(request.getMinAdvanceBookingDays())
+                .promoCode(request.getPromoCode())
+                .build();
     }
 }
