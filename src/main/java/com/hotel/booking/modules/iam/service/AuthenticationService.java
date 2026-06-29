@@ -1,0 +1,4 @@
+package com.hotel.booking.modules.iam.service;
+
+public interface AuthenticationService {
+}
