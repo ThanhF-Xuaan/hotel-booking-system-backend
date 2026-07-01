@@ -5,11 +5,15 @@ import com.hotel.booking.core.exception.AppException;
 import com.hotel.booking.core.exception.ErrorCode;
 import com.hotel.booking.modules.inventory.entity.HotelRoomType;
 import com.hotel.booking.modules.inventory.repository.HotelRoomTypeRepository;
+import com.hotel.booking.modules.pricing.dto.request.SurchargeConditionRequest;
 import com.hotel.booking.modules.pricing.dto.request.SurchargeRuleCreateRequest;
 import com.hotel.booking.modules.pricing.dto.request.SurchargeRuleUpdateRequest;
 import com.hotel.booking.modules.pricing.dto.response.SurchargeRuleResponse;
+import com.hotel.booking.modules.pricing.entity.HotelAgePolicy;
 import com.hotel.booking.modules.pricing.entity.SurchargeRule;
+import com.hotel.booking.modules.pricing.enums.SurchargeRuleType;
 import com.hotel.booking.modules.pricing.mapper.SurchargeRuleMapper;
+import com.hotel.booking.modules.pricing.repository.HotelAgePolicyRepository;
 import com.hotel.booking.modules.pricing.repository.SurchargeRuleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +35,7 @@ public class SurchargeRuleServiceImpl implements SurchargeRuleService {
 
     SurchargeRuleRepository surchargeRuleRepository;
     HotelRoomTypeRepository hotelRoomTypeRepository;
+    HotelAgePolicyRepository hotelAgePolicyRepository;
     SurchargeRuleMapper surchargeRuleMapper;
 
     @Override
@@ -39,14 +44,17 @@ public class SurchargeRuleServiceImpl implements SurchargeRuleService {
         log.info("Creating new surcharge rule for room type ID: {}", request.getHotelRoomTypeId());
 
         HotelRoomType roomType = validateAndGetRoomType(request.getHotelRoomTypeId());
-        validateSurchargeRuleCommon(request.getAdjustmentValue(), request.getStartDate(), request.getEndDate());
+        validateSurchargeRuleCommon(request.getRuleType(), request.getAgePolicyId(), request.getConditions(), request.getAdjustmentValue(), request.getStartDate(), request.getEndDate());
 
-        if (surchargeRuleRepository.existsOverlapping(request.getHotelRoomTypeId(), request.getRuleType(), request.getGuestType(), request.getStartDate(), request.getEndDate(), null)) {
+        HotelAgePolicy agePolicy = validateAndGetAgePolicy(request.getAgePolicyId());
+
+        if (surchargeRuleRepository.existsOverlapping(request.getHotelRoomTypeId(), request.getRuleType(), request.getStartDate(), request.getEndDate(), null)) {
             throw new AppException(ErrorCode.SURCHARGE_RULE_OVERLAPPING);
         }
 
         SurchargeRule surchargeRule = surchargeRuleMapper.toEntity(request);
         surchargeRule.setHotelRoomType(roomType);
+        surchargeRule.setAgePolicy(agePolicy);
         surchargeRule.setIsDeleted(false);
 
         if (surchargeRule.getStatus() == null) {
@@ -91,14 +99,17 @@ public class SurchargeRuleServiceImpl implements SurchargeRuleService {
                 .orElseThrow(() -> new AppException(ErrorCode.SURCHARGE_RULE_NOT_FOUND));
 
         HotelRoomType roomType = validateAndGetRoomType(request.getHotelRoomTypeId());
-        validateSurchargeRuleCommon(request.getAdjustmentValue(), request.getStartDate(), request.getEndDate());
+        validateSurchargeRuleCommon(request.getRuleType(), request.getAgePolicyId(), request.getConditions(), request.getAdjustmentValue(), request.getStartDate(), request.getEndDate());
 
-        if (surchargeRuleRepository.existsOverlapping(request.getHotelRoomTypeId(), request.getRuleType(), request.getGuestType(), request.getStartDate(), request.getEndDate(), id)) {
+        HotelAgePolicy agePolicy = validateAndGetAgePolicy(request.getAgePolicyId());
+
+        if (surchargeRuleRepository.existsOverlapping(request.getHotelRoomTypeId(), request.getRuleType(), request.getStartDate(), request.getEndDate(), id)) {
             throw new AppException(ErrorCode.SURCHARGE_RULE_OVERLAPPING);
         }
 
         surchargeRuleMapper.updateEntity(request, surchargeRule);
         surchargeRule.setHotelRoomType(roomType);
+        surchargeRule.setAgePolicy(agePolicy);
 
         SurchargeRule updated = surchargeRuleRepository.save(surchargeRule);
         log.info("Surcharge rule updated successfully with ID: {}", updated.getId());
@@ -125,7 +136,15 @@ public class SurchargeRuleServiceImpl implements SurchargeRuleService {
                 .orElseThrow(() -> new AppException(ErrorCode.HOTEL_ROOM_TYPE_NOT_FOUND));
     }
 
-    private void validateSurchargeRuleCommon(BigDecimal adjustmentValue, LocalDate startDate, LocalDate endDate) {
+    private HotelAgePolicy validateAndGetAgePolicy(Short agePolicyId) {
+        if (agePolicyId == null) {
+            return null;
+        }
+        return hotelAgePolicyRepository.findByIdAndIsDeletedFalse(agePolicyId)
+                .orElseThrow(() -> new AppException(ErrorCode.AGE_POLICY_NOT_FOUND));
+    }
+
+    private void validateSurchargeRuleCommon(SurchargeRuleType ruleType, Short agePolicyId, SurchargeConditionRequest conditions, BigDecimal adjustmentValue, LocalDate startDate, LocalDate endDate) {
         if (adjustmentValue == null) {
             throw new AppException(ErrorCode.SURCHARGE_RULE_ADJUSTMENT_VALUE_NOT_NULL);
         }
@@ -141,5 +160,16 @@ public class SurchargeRuleServiceImpl implements SurchargeRuleService {
         if (startDate.isAfter(endDate)) {
             throw new AppException(ErrorCode.SURCHARGE_RULE_INVALID_DATE_RANGE);
         }
+        if (ruleType == SurchargeRuleType.EXTRA_PERSON) {
+            if (agePolicyId == null) {
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+            }
+        }
+        if (ruleType == SurchargeRuleType.EARLY_CHECKIN || ruleType == SurchargeRuleType.LATE_CHECKOUT) {
+            if (conditions == null || conditions.getMinHours() == null) {
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+            }
+        }
     }
 }
+

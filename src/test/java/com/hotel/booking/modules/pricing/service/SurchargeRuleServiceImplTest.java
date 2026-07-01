@@ -8,6 +8,8 @@ import com.hotel.booking.modules.pricing.dto.request.SurchargeRuleCreateRequest;
 import com.hotel.booking.modules.pricing.dto.request.SurchargeRuleUpdateRequest;
 import com.hotel.booking.modules.pricing.enums.AdjustmentType;
 import com.hotel.booking.modules.pricing.enums.SurchargeRuleType;
+import com.hotel.booking.modules.pricing.mapper.SurchargeRuleMapper;
+import com.hotel.booking.modules.pricing.repository.HotelAgePolicyRepository;
 import com.hotel.booking.modules.pricing.repository.SurchargeRuleRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,8 +34,52 @@ class SurchargeRuleServiceImplTest {
     @Mock
     HotelRoomTypeRepository hotelRoomTypeRepository;
 
+    @Mock
+    HotelAgePolicyRepository hotelAgePolicyRepository;
+
+    @Mock
+    SurchargeRuleMapper surchargeRuleMapper;
+
     @InjectMocks
     SurchargeRuleServiceImpl surchargeRuleService;
+
+    @Test
+    void createSurchargeRule_extraPersonConditionsMissing_throwsException() {
+        SurchargeRuleCreateRequest request = SurchargeRuleCreateRequest.builder()
+                .hotelRoomTypeId(1)
+                .ruleType(SurchargeRuleType.EXTRA_PERSON)
+                .adjustmentType(AdjustmentType.FIXED)
+                .adjustmentValue(new BigDecimal("100"))
+                .startDate(LocalDate.of(2026, 7, 1))
+                .endDate(LocalDate.of(2026, 7, 31))
+                .build();
+
+        HotelRoomType roomType = new HotelRoomType();
+        when(hotelRoomTypeRepository.findByIdAndIsDeletedFalse(1)).thenReturn(Optional.of(roomType));
+
+        assertThrows(AppException.class, () -> {
+            surchargeRuleService.createSurchargeRule(request);
+        });
+    }
+
+    @Test
+    void createSurchargeRule_earlyCheckinConditionsMissing_throwsException() {
+        SurchargeRuleCreateRequest request = SurchargeRuleCreateRequest.builder()
+                .hotelRoomTypeId(1)
+                .ruleType(SurchargeRuleType.EARLY_CHECKIN)
+                .adjustmentType(AdjustmentType.FIXED)
+                .adjustmentValue(new BigDecimal("100"))
+                .startDate(LocalDate.of(2026, 7, 1))
+                .endDate(LocalDate.of(2026, 7, 31))
+                .build();
+
+        HotelRoomType roomType = new HotelRoomType();
+        when(hotelRoomTypeRepository.findByIdAndIsDeletedFalse(1)).thenReturn(Optional.of(roomType));
+
+        assertThrows(AppException.class, () -> {
+            surchargeRuleService.createSurchargeRule(request);
+        });
+    }
 
     @Test
     void createSurchargeRule_valueInvalid_throwsException() {
@@ -130,7 +176,7 @@ class SurchargeRuleServiceImplTest {
 
         HotelRoomType roomType = new HotelRoomType();
         when(hotelRoomTypeRepository.findByIdAndIsDeletedFalse(1)).thenReturn(Optional.of(roomType));
-        when(surchargeRuleRepository.existsOverlapping(eq(1), eq(SurchargeRuleType.EXTRA_BED), any(), eq(LocalDate.of(2026, 7, 10)), eq(LocalDate.of(2026, 7, 15)), any()))
+        when(surchargeRuleRepository.existsOverlapping(eq(1), eq(SurchargeRuleType.EXTRA_BED), eq(LocalDate.of(2026, 7, 10)), eq(LocalDate.of(2026, 7, 15)), any()))
                 .thenReturn(true);
 
         AppException exception = assertThrows(AppException.class, () -> {
@@ -140,3 +186,4 @@ class SurchargeRuleServiceImplTest {
         assertEquals(ErrorCode.SURCHARGE_RULE_OVERLAPPING, exception.getErrorCode());
     }
 }
+

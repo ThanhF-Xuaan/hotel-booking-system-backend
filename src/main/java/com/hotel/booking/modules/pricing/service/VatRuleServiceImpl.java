@@ -6,8 +6,10 @@ import com.hotel.booking.core.exception.ErrorCode;
 import com.hotel.booking.modules.pricing.dto.request.VatRuleCreationRequest;
 import com.hotel.booking.modules.pricing.dto.request.VatRuleUpdateRequest;
 import com.hotel.booking.modules.pricing.dto.response.VatRuleResponse;
+import com.hotel.booking.modules.pricing.entity.TaxCategory;
 import com.hotel.booking.modules.pricing.entity.VatRule;
 import com.hotel.booking.modules.pricing.mapper.VatRuleMapper;
+import com.hotel.booking.modules.pricing.repository.TaxCategoryRepository;
 import com.hotel.booking.modules.pricing.repository.VatRuleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ import java.util.List;
 public class VatRuleServiceImpl implements VatRuleService {
 
     VatRuleRepository vatRuleRepository;
+    TaxCategoryRepository taxCategoryRepository;
     VatRuleMapper vatRuleMapper;
 
     @Override
@@ -42,9 +45,13 @@ public class VatRuleServiceImpl implements VatRuleService {
             throw new AppException(ErrorCode.VAT_RULE_NAME_EXISTED);
         }
 
+        TaxCategory taxCategory = taxCategoryRepository.findByIdAndIsDeletedFalse(request.getTaxCategoryId())
+                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION)); // Or we can throw tax category not found if exists
+
         validateDateRange(request.getStartDate(), request.getEndDate());
 
         VatRule vatRule = vatRuleMapper.toEntity(request);
+        vatRule.setTaxCategory(taxCategory);
         
         if (vatRule.getStatus() == null) {
             vatRule.setStatus(ActiveStatus.ACTIVE);
@@ -83,6 +90,12 @@ public class VatRuleServiceImpl implements VatRuleService {
 
         if (vatRuleRepository.existsByVatNameAndIdNotAndIsDeletedFalse(request.getVatName(), id)) {
             throw new AppException(ErrorCode.VAT_RULE_NAME_EXISTED);
+        }
+
+        if (request.getTaxCategoryId() != null && !vatRule.getTaxCategory().getId().equals(request.getTaxCategoryId())) {
+            TaxCategory taxCategory = taxCategoryRepository.findByIdAndIsDeletedFalse(request.getTaxCategoryId())
+                    .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION));
+            vatRule.setTaxCategory(taxCategory);
         }
 
         LocalDate finalStartDate = request.getStartDate() != null ? request.getStartDate() : vatRule.getStartDate();

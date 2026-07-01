@@ -267,6 +267,13 @@ public enum ErrorCode {
         SURCHARGE_RULE_OVERLAPPING(8511, "Surcharge rule dates overlap with an existing rule", HttpStatus.BAD_REQUEST),
 
         PRICING_RULE_OVERLAPPING(8600, "Pricing rule dates overlap with an existing rule", HttpStatus.BAD_REQUEST),
+        
+        AGE_POLICY_NOT_FOUND(8700, "Hotel age policy not found", HttpStatus.NOT_FOUND),
+        AGE_POLICY_DUPLICATE_GUEST_TYPE(8701, "This hotel already has an age policy for this guest type", HttpStatus.BAD_REQUEST),
+        AGE_POLICY_INVALID_AGE_RANGE(8702, "Min age must be less than or equal to max age", HttpStatus.BAD_REQUEST),
+        
+        TAX_CATEGORY_NOT_FOUND(8800, "Tax category not found", HttpStatus.NOT_FOUND),
+        TAX_CATEGORY_CODE_EXISTED(8801, "Tax category code already exists", HttpStatus.BAD_REQUEST),
         ;
 
         ErrorCode(int code, String message, HttpStatusCode statusCode) {

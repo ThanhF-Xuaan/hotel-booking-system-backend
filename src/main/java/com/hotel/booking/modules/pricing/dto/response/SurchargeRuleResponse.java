@@ -1,7 +1,7 @@
 package com.hotel.booking.modules.pricing.dto.response;
 
 import com.hotel.booking.core.enums.ActiveStatus;
-import com.hotel.booking.modules.crm.enums.GuestType;
+import com.hotel.booking.modules.pricing.entity.pojo.SurchargeCondition;
 import com.hotel.booking.modules.pricing.enums.AdjustmentType;
 import com.hotel.booking.modules.pricing.enums.SurchargeRuleType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -34,8 +34,11 @@ public class SurchargeRuleResponse {
     @Schema(description = "Loại phụ phí", example = "EXTRA_BED")
     SurchargeRuleType ruleType;
 
-    @Schema(description = "Loại khách (nếu có)", example = "ADULT")
-    GuestType guestType;
+    @Schema(description = "ID của chính sách độ tuổi áp dụng", example = "1")
+    Short agePolicyId;
+
+    @Schema(description = "Điều kiện phụ phí")
+    SurchargeCondition conditions;
 
     @Schema(description = "Loại điều chỉnh (PERCENT, FIXED)", example = "FIXED")
     AdjustmentType adjustmentType;
@@ -52,3 +55,4 @@ public class SurchargeRuleResponse {
     @Schema(description = "Trạng thái hoạt động", example = "ACTIVE")
     ActiveStatus status;
 }
+

@@ -1,4 +1,4 @@
-package com.hotel.booking.modules.inventory.entity;
+package com.hotel.booking.modules.pricing.entity;
 
 import com.hotel.booking.core.entity.BaseEntity;
 import com.hotel.booking.core.enums.ActiveStatus;
@@ -10,7 +10,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,38 +17,34 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
-import com.hotel.booking.modules.inventory.enums.FeatureCategory;
 
 @Entity
-@Table(name = "room_features", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_room_feature_name", columnNames = { "name" })
-})
+@Table(name = "tax_categories")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class RoomFeature extends BaseEntity {
+public class TaxCategory extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Short id;
+    Integer id;
 
-    @Column(name = "name", nullable = false, length = 150)
-    String name;
+    @Column(name = "category_code", nullable = false, unique = true, length = 50)
+    String categoryCode;
 
-    @Column(name = "code", nullable = false, unique = true, length = 50)
-    String code;
+    @Column(name = "category_name", nullable = false, length = 150)
+    String categoryName;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "category", length = 50)
-    FeatureCategory category;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "status", nullable = false, length = 20)
     ActiveStatus status;
 
-    @Column(name = "is_deleted", nullable = false)
+    @Column(name = "is_deleted")
     Boolean isDeleted = false;
 }

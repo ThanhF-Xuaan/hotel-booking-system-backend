@@ -2,14 +2,16 @@ package com.hotel.booking.modules.pricing.entity;
 
 import com.hotel.booking.core.entity.BaseEntity;
 import com.hotel.booking.core.enums.ActiveStatus;
-import com.hotel.booking.modules.pricing.enums.AppliesTo;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -36,6 +38,10 @@ public class VatRule extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tax_category_id", nullable = false)
+    TaxCategory taxCategory;
+
     @Column(name = "vat_code", nullable = false, unique = true, length = 50)
     String vatCode;
 
@@ -45,18 +51,14 @@ public class VatRule extends BaseEntity {
     @Column(name = "vat_percent", nullable = false, precision = 5, scale = 2)
     BigDecimal vatPercent;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "applies_to", nullable = false, length = 50)
-    AppliesTo appliesTo;
-
-    @Column(name = "start_date")
+    @Column(name = "start_date", nullable = false)
     LocalDate startDate;
 
     @Column(name = "end_date")
     LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 50)
+    @Column(name = "status", nullable = false, length = 20)
     ActiveStatus status;
 
     @Column(name = "is_deleted")

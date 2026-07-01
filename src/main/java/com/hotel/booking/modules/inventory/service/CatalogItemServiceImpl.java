@@ -10,8 +10,8 @@ import com.hotel.booking.modules.inventory.entity.Hotel;
 import com.hotel.booking.modules.inventory.mapper.CatalogItemMapper;
 import com.hotel.booking.modules.inventory.repository.CatalogItemRepository;
 import com.hotel.booking.modules.inventory.repository.HotelRepository;
-import com.hotel.booking.modules.pricing.entity.VatRule;
-import com.hotel.booking.modules.pricing.repository.VatRuleRepository;
+import com.hotel.booking.modules.pricing.entity.TaxCategory;
+import com.hotel.booking.modules.pricing.repository.TaxCategoryRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -30,23 +30,23 @@ public class CatalogItemServiceImpl implements CatalogItemService {
 
     CatalogItemRepository catalogItemRepository;
     HotelRepository hotelRepository;
-    VatRuleRepository vatRuleRepository;
+    TaxCategoryRepository taxCategoryRepository;
     CatalogItemMapper catalogItemMapper;
 
     @Override
     @Transactional
     public CatalogItemResponse createCatalogItem(CatalogItemCreationRequest request) {
-        log.info("Creating CatalogItem for hotelId: {}, vatRuleId: {}", request.getHotelId(), request.getVatRuleId());
+        log.info("Creating CatalogItem for hotelId: {}, taxCategoryId: {}", request.getHotelId(), request.getTaxCategoryId());
 
         Hotel hotel = hotelRepository.findByIdAndIsDeletedFalse(request.getHotelId())
                 .orElseThrow(() -> new AppException(ErrorCode.HOTEL_NOT_FOUND));
 
-        VatRule vatRule = vatRuleRepository.findByIdAndIsDeletedFalse(request.getVatRuleId())
-                .orElseThrow(() -> new AppException(ErrorCode.VAT_RULE_NOT_FOUND));
+        TaxCategory taxCategory = taxCategoryRepository.findByIdAndIsDeletedFalse(request.getTaxCategoryId())
+                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION)); // Generic error or tax category not found
 
         CatalogItem entity = catalogItemMapper.toEntity(request);
         entity.setHotel(hotel);
-        entity.setVatRule(vatRule);
+        entity.setTaxCategory(taxCategory);
         entity.setIsDeleted(false);
 
         entity = catalogItemRepository.save(entity);
@@ -61,10 +61,10 @@ public class CatalogItemServiceImpl implements CatalogItemService {
         CatalogItem entity = catalogItemRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CATALOG_ITEM_NOT_FOUND));
 
-        if (!entity.getVatRule().getId().equals(request.getVatRuleId())) {
-            VatRule vatRule = vatRuleRepository.findByIdAndIsDeletedFalse(request.getVatRuleId())
-                    .orElseThrow(() -> new AppException(ErrorCode.VAT_RULE_NOT_FOUND));
-            entity.setVatRule(vatRule);
+        if (!entity.getTaxCategory().getId().equals(request.getTaxCategoryId())) {
+            TaxCategory taxCategory = taxCategoryRepository.findByIdAndIsDeletedFalse(request.getTaxCategoryId())
+                    .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION));
+            entity.setTaxCategory(taxCategory);
         }
 
         catalogItemMapper.updateCatalogItem(request, entity);
@@ -112,3 +112,4 @@ public class CatalogItemServiceImpl implements CatalogItemService {
         catalogItemRepository.save(entity);
     }
 }
+

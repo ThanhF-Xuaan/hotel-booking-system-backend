@@ -12,4 +12,5 @@ public interface RoleRepository extends JpaRepository<Role, Short> {
     Optional<Role> findByIdAndIsDeletedFalse(Short id);
     boolean existsByCode(String code);
     boolean existsByCodeAndIdNot(String code, Short id);
+    Optional<Role> findByCodeAndIsDeletedFalse(String code);
 }

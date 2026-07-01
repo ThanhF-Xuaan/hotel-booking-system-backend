@@ -1,7 +1,6 @@
 package com.hotel.booking.modules.pricing.dto.request;
 
 import com.hotel.booking.core.enums.ActiveStatus;
-import com.hotel.booking.modules.pricing.enums.AppliesTo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -39,9 +38,9 @@ public class VatRuleUpdateRequest {
     @Schema(description = "Phần trăm thuế", example = "10.00", requiredMode = Schema.RequiredMode.REQUIRED)
     BigDecimal vatPercent;
 
-    @NotNull(message = "VAT_RULE_APPLIES_TO_NOT_NULL")
-    @Schema(description = "Đối tượng áp dụng thuế", example = "ROOM", requiredMode = Schema.RequiredMode.REQUIRED)
-    AppliesTo appliesTo;
+    @NotNull(message = "VAT_RULE_TAX_CATEGORY_ID_NOT_NULL")
+    @Schema(description = "ID của danh mục thuế", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    Integer taxCategoryId;
 
     @Schema(description = "Ngày bắt đầu hiệu lực", example = "2026-01-01")
     LocalDate startDate;

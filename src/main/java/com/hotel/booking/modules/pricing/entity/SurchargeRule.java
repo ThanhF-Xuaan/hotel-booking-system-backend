@@ -2,8 +2,8 @@ package com.hotel.booking.modules.pricing.entity;
 
 import com.hotel.booking.core.entity.BaseEntity;
 import com.hotel.booking.core.enums.ActiveStatus;
-import com.hotel.booking.modules.crm.enums.GuestType;
 import com.hotel.booking.modules.inventory.entity.HotelRoomType;
+import com.hotel.booking.modules.pricing.entity.pojo.SurchargeCondition;
 import com.hotel.booking.modules.pricing.enums.AdjustmentType;
 import com.hotel.booking.modules.pricing.enums.SurchargeRuleType;
 import jakarta.persistence.Column;
@@ -24,6 +24,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -46,13 +48,17 @@ public class SurchargeRule extends BaseEntity {
     @JoinColumn(name = "hotel_room_type_id", nullable = false)
     HotelRoomType hotelRoomType;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "age_policy_id")
+    HotelAgePolicy agePolicy;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "rule_type", nullable = false, length = 50)
     SurchargeRuleType ruleType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "guest_type", length = 20)
-    GuestType guestType;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "conditions", nullable = false, columnDefinition = "jsonb")
+    SurchargeCondition conditions;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "adjustment_type", nullable = false, length = 20)
@@ -74,3 +80,4 @@ public class SurchargeRule extends BaseEntity {
     @Column(name = "is_deleted")
     Boolean isDeleted = false;
 }
+

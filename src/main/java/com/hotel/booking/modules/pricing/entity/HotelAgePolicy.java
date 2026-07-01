@@ -1,9 +1,8 @@
-package com.hotel.booking.modules.inventory.entity;
+package com.hotel.booking.modules.pricing.entity;
 
 import com.hotel.booking.core.entity.BaseEntity;
 import com.hotel.booking.core.enums.ActiveStatus;
-import com.hotel.booking.modules.inventory.enums.ItemType;
-import com.hotel.booking.modules.pricing.entity.TaxCategory;
+import com.hotel.booking.modules.inventory.entity.Hotel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -23,45 +22,37 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
-import java.math.BigDecimal;
-
 @Entity
-@Table(name = "catalog_items")
+@Table(name = "hotel_age_policies")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CatalogItem extends BaseEntity {
+public class HotelAgePolicy extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Integer id;
+    Short id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hotel_id", nullable = false)
     Hotel hotel;
 
-    @Column(name = "name", nullable = false, length = 150)
-    String name;
+    @Column(name = "guest_type", nullable = false, length = 20)
+    String guestType;
+
+    @Column(name = "min_age", nullable = false)
+    Short minAge;
+
+    @Column(name = "max_age", nullable = false)
+    Short maxAge;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", nullable = false, length = 50)
-    ItemType itemType;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tax_category_id", nullable = false)
-    TaxCategory taxCategory;
-
-    @Column(name = "base_price", nullable = false, precision = 15, scale = 2)
-    BigDecimal basePrice;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 50)
+    @Column(name = "status", nullable = false, length = 20)
     ActiveStatus status;
 
     @Column(name = "is_deleted")
     Boolean isDeleted = false;
 }
-

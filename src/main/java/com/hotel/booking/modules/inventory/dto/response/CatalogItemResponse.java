@@ -34,8 +34,8 @@ public class CatalogItemResponse {
     @Schema(description = "Loại danh mục mặt hàng", example = "ROOM_SERVICE")
     ItemType itemType;
 
-    @Schema(description = "ID của cấu hình thuế VAT áp dụng", example = "1")
-    Integer vatRuleId;
+    @Schema(description = "ID của danh mục thuế áp dụng", example = "1")
+    Integer taxCategoryId;
 
     @Schema(description = "Giá cơ bản của mặt hàng", example = "150000.00")
     BigDecimal basePrice;

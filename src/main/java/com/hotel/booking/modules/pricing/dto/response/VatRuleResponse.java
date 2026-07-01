@@ -1,7 +1,6 @@
 package com.hotel.booking.modules.pricing.dto.response;
 
 import com.hotel.booking.core.enums.ActiveStatus;
-import com.hotel.booking.modules.pricing.enums.AppliesTo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -36,8 +35,8 @@ public class VatRuleResponse {
     @Schema(description = "Phần trăm thuế", example = "10.00")
     BigDecimal vatPercent;
 
-    @Schema(description = "Đối tượng áp dụng thuế", example = "ROOM")
-    AppliesTo appliesTo;
+    @Schema(description = "ID của danh mục thuế", example = "1")
+    Integer taxCategoryId;
 
     @Schema(description = "Ngày bắt đầu hiệu lực", example = "2026-01-01")
     LocalDate startDate;

@@ -37,9 +37,9 @@ public class CatalogItemCreationRequest {
     @Schema(description = "Loại danh mục mặt hàng", example = "ROOM_SERVICE", requiredMode = Schema.RequiredMode.REQUIRED)
     ItemType itemType;
 
-    @NotNull(message = "CATALOG_ITEM_VAT_RULE_ID_NOT_NULL")
-    @Schema(description = "ID của cấu hình thuế VAT áp dụng", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    Integer vatRuleId;
+    @NotNull(message = "CATALOG_ITEM_TAX_CATEGORY_ID_NOT_NULL")
+    @Schema(description = "ID của danh mục thuế áp dụng", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    Integer taxCategoryId;
 
     @NotNull(message = "CATALOG_ITEM_BASE_PRICE_NOT_NULL")
     @DecimalMin(value = "0.0", message = "CATALOG_ITEM_BASE_PRICE_MIN")
