@@ -5,6 +5,7 @@ import java.nio.file.AccessDeniedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -81,5 +82,23 @@ public class GlobalHandlerException {
                         .code(400)
                         .message("Dữ liệu đầu vào không hợp lệ hoặc giá trị không tồn tại!")
                         .build());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(ObjectOptimisticLockingFailureException e) {
+        log.warn("Xảy ra đụng độ Optimistic Lock khi giữ phòng!", e);
+
+        // Lấy ErrorCode đã định nghĩa
+        ErrorCode errorCode = ErrorCode.ROOM_CONCURRENCY_CONFLICT;
+
+        // Build ApiResponse chuẩn theo format dự án của bạn
+        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
+                .code(errorCode.getCode())
+                .message(errorCode.getMessage())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(apiResponse);
     }
 }

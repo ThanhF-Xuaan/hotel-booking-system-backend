@@ -282,6 +282,14 @@ public enum ErrorCode {
         SEARCH_INVALID_ROOM_OCCUPANCY_CONFIGURATION(8512, "Số lượng phòng không khớp với cấu hình số lượng khách", HttpStatus.BAD_REQUEST),
         PRICING_CALCULATION_FAILED(8513, "Pricing calculation failed due to an internal error", HttpStatus.INTERNAL_SERVER_ERROR),
         PRICING_ROOMS_NOT_EMPTY(8514, "Danh sách phòng yêu cầu không được để trống", HttpStatus.BAD_REQUEST),
+
+
+        ROOM_AVAILABILITY_NOT_FOUND(9001, "No room availability data found for the selected dates", HttpStatus.NOT_FOUND),
+        ROOM_NOT_ENOUGH_QUANTITY(9002, "Not enough rooms available for the requested dates", HttpStatus.BAD_REQUEST),
+        ROOM_CONCURRENCY_CONFLICT(9003, "The room was just booked by another user. Please try again.", HttpStatus.CONFLICT),
+        ROOM_ADULT_CAPACITY_EXCEEDED(9004, "Số lượng người lớn vượt quá quy định", HttpStatus.BAD_REQUEST),
+        ROOM_CHILD_CAPACITY_EXCEEDED(9005, "Số lượng trẻ em vượt quá quy định", HttpStatus.BAD_REQUEST),
+        ROOM_INFANT_CAPACITY_EXCEEDED(9006, "Số lượng em bé vượt quá quy định", HttpStatus.BAD_REQUEST),
         ;
 
         ErrorCode(int code, String message, HttpStatusCode statusCode) {

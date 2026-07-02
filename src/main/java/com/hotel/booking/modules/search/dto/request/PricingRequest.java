@@ -13,6 +13,7 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -25,7 +26,7 @@ public class PricingRequest {
 
     @NotNull(message = "PRICING_HOTEL_ID_NOT_NULL")
     @Schema(description = "ID của khách sạn", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    Integer hotelId;
+    Short hotelId;
 
     @NotNull(message = "PRICING_CHECKIN_NOT_NULL")
     @FutureOrPresent(message = "PRICING_CHECKIN_FUTURE_OR_PRESENT")
@@ -39,5 +40,5 @@ public class PricingRequest {
     @jakarta.validation.constraints.NotEmpty(message = "PRICING_ROOMS_NOT_EMPTY")
     @jakarta.validation.Valid
     @Schema(description = "Danh sách phòng yêu cầu", requiredMode = Schema.RequiredMode.REQUIRED)
-    java.util.List<RoomRequest> rooms;
+    List<RoomRequest> rooms;
 }

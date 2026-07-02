@@ -102,6 +102,21 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                     throw new AppException(ErrorCode.ROOM_CAPACITY_EXCEEDED);
                 }
 
+                if (occ.getAdults() != null && occ.getAdults() > roomType.getMaxAdults()) {
+                    log.warn("Validation failed: Adults {} > MaxAdults {}", occ.getAdults(), roomType.getMaxAdults());
+                    throw new AppException(ErrorCode.ROOM_ADULT_CAPACITY_EXCEEDED);
+                }
+
+                if (occ.getChildren() != null && occ.getChildren() > roomType.getMaxChildren()) {
+                    log.warn("Validation failed: Children {} > MaxChildren {}", occ.getChildren(), roomType.getMaxChildren());
+                    throw new AppException(ErrorCode.ROOM_CHILD_CAPACITY_EXCEEDED);
+                }
+
+                if (occ.getInfants() != null && occ.getInfants() > roomType.getMaxInfants()) {
+                    log.warn("Validation failed: Infants {} > MaxInfants {}", occ.getInfants(), roomType.getMaxInfants());
+                    throw new AppException(ErrorCode.ROOM_INFANT_CAPACITY_EXCEEDED);
+                }
+
                 // Fetch rules and tax category for this room type
                 List<PricingRule> pricingRules = pricingRuleRepository
                         .findAllByHotelRoomTypeIdAndIsDeletedFalse(roomType.getId());

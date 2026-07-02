@@ -28,7 +28,7 @@ public class RoomAvailabilityBatchJob {
     RoomAvailabilityRepository roomAvailabilityRepository;
 
     @Scheduled(cron = "0 0 2 * * ?")
-    @EventListener(ApplicationReadyEvent.class)
+//    @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void preGenerateRoomAvailability() {
         log.info("Starting RoomAvailabilityBatchJob to pre-generate 180 days of room availability data");

@@ -48,4 +48,8 @@ public interface RoomAvailabilityRepository extends JpaRepository<RoomAvailabili
             @Param("roomCount") Integer roomCount,
             @Param("numberOfNights") Long numberOfNights
     );
+
+    List<RoomAvailability> findByHotelRoomTypeIdAndDateBetween(
+            Integer hotelRoomTypeId, LocalDate startDate, LocalDate endDate
+    );
 }

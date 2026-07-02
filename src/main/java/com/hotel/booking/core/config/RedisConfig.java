@@ -1,5 +1,10 @@
 package com.hotel.booking.core.config;
 
+import jakarta.annotation.PostConstruct; // Bổ sung import này
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import org.springframework.beans.factory.annotation.Autowired; // Bổ sung import này
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -7,6 +12,7 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -14,37 +20,41 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import java.time.Duration;
 
 @Configuration
-@EnableCaching // Bật tính năng @Cacheable của Spring Boot
+@EnableCaching
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class RedisConfig {
+    RedisConnectionFactory redisConnectionFactory;
+
+    // BỔ SUNG: Chạy tự động ngay khi Spring Boot khởi động
+    @PostConstruct
+    public void enableKeyspaceEvents() {
+        redisConnectionFactory.getConnection()
+                .serverCommands()
+                .setConfig("notify-keyspace-events", "Ex");
+    }
 
     /**
-     * Cấu hình RedisTemplate dùng để thao tác trực tiếp với Redis (Ví dụ: Lưu Session 10 phút ở Bước 10)
+     * Cấu hình RedisTemplate dùng để thao tác trực tiếp với Redis
      */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
-
-        // Key luôn là String (VD: "payment:session_abc123")
         template.setKeySerializer(new StringRedisSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
-
-        // Value sẽ được serialize ra dạng JSON để dễ đọc và debug
         template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
         template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
-
         template.afterPropertiesSet();
         return template;
     }
 
     /**
-     * Cấu hình RedisCacheManager dùng cho các Annotation @Cacheable, @CachePut, @CacheEvict
-     * (Dùng để cache danh sách khách sạn, loại phòng, rule giá để tăng tốc Bước 1 và Bước 2)
+     * Cấu hình RedisCacheManager
      */
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                // Mặc định cache sẽ sống 1 giờ nếu không chỉ định cụ thể
                 .entryTtl(Duration.ofHours(1))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()))
@@ -53,5 +63,12 @@ public class RedisConfig {
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)
                 .build();
+    }
+
+    @Bean
+    public RedisMessageListenerContainer redisMessageListenerContainer(RedisConnectionFactory connectionFactory) {
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        return container;
     }
 }
