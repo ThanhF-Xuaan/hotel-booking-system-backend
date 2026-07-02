@@ -26,68 +26,44 @@ public class PricingEngineServiceImpl implements PricingEngineService {
             return Optional.empty();
         }
 
-        // Step 1: Absolute Override (The 'Manager's Force' Rule)
-        // Check for priority >= 100.
-        PricingRule overrideWinner = null;
-        for (PricingRule rule : rules) {
-            if (rule != null && rule.getRuleType() != null && rule.getRuleType().getPriority() != null && rule.getRuleType().getPriority() >= 100) {
-                short rulePriority = rule.getRuleType().getPriority();
-                short overrideWinnerPriority = (overrideWinner != null && overrideWinner.getRuleType() != null && overrideWinner.getRuleType().getPriority() != null) 
-                        ? overrideWinner.getRuleType().getPriority() : 0;
-                if (overrideWinner == null || rulePriority > overrideWinnerPriority) {
-                    overrideWinner = rule;
-                }
+        class PricingEvaluationContext {
+            final PricingRule rule;
+            final BigDecimal benefit;
+
+            PricingEvaluationContext(PricingRule rule, BigDecimal benefit) {
+                this.rule = rule;
+                this.benefit = benefit;
+            }
+
+            BigDecimal getBenefit() {
+                return benefit;
+            }
+
+            short getPriority() {
+                return rule.getRuleType() != null && rule.getRuleType().getPriority() != null
+                        ? rule.getRuleType().getPriority() : 0;
             }
         }
 
-        if (overrideWinner != null) {
-            log.info("Absolute override applied: Rule ID {} with priority {}", 
-                    overrideWinner.getId(), overrideWinner.getRuleType().getPriority());
-            return Optional.of(overrideWinner);
-        }
-
-        // Step 2 & 3: Max Value Competition & Tie-breaker (Priority Resolution)
-        PricingRule mathematicalWinner = null;
-        BigDecimal maxAdjustmentAmount = BigDecimal.valueOf(-1);
-
-        for (PricingRule rule : rules) {
-            if (rule == null) {
-                continue;
-            }
-
-            BigDecimal adjustmentAmount = calculateAdjustmentAmount(rule, basePrice);
-            if (mathematicalWinner == null) {
-                mathematicalWinner = rule;
-                maxAdjustmentAmount = adjustmentAmount;
-                continue;
-            }
-
-            int amountComparison = adjustmentAmount.compareTo(maxAdjustmentAmount);
-            if (amountComparison > 0) {
-                // Step 2: Pick the rule with the highest adjustment amount
-                mathematicalWinner = rule;
-                maxAdjustmentAmount = adjustmentAmount;
-            } else if (amountComparison == 0) {
-                // Step 3: Tie-breaker on priority
-                short rulePriority = (rule.getRuleType() != null && rule.getRuleType().getPriority() != null) ? rule.getRuleType().getPriority() : 0;
-                short winnerPriority = (mathematicalWinner.getRuleType() != null && mathematicalWinner.getRuleType().getPriority() != null) ? mathematicalWinner.getRuleType().getPriority() : 0;
-                if (rulePriority > winnerPriority) {
-                    mathematicalWinner = rule;
-                }
-            }
-        }
+        PricingRule mathematicalWinner = rules.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(rule -> new PricingEvaluationContext(rule, calculateAdjustment(rule, basePrice)))
+                .max(java.util.Comparator.comparing(PricingEvaluationContext::getBenefit)
+                        .thenComparing(PricingEvaluationContext::getPriority))
+                .map(ctx -> ctx.rule)
+                .orElse(null);
 
         if (mathematicalWinner != null) {
-            short priorityVal = (mathematicalWinner.getRuleType() != null && mathematicalWinner.getRuleType().getPriority() != null) 
+            short priorityVal = (mathematicalWinner.getRuleType() != null && mathematicalWinner.getRuleType().getPriority() != null)
                     ? mathematicalWinner.getRuleType().getPriority() : 0;
-            log.info("Mathematical winner resolved: Rule ID {} with adjustment yield {} and priority {}", 
-                    mathematicalWinner.getId(), maxAdjustmentAmount, priorityVal);
+            log.info("Winner resolved: Rule ID {} with priority {}",
+                    mathematicalWinner.getId(), priorityVal);
         }
 
         return Optional.ofNullable(mathematicalWinner);
     }
 
-    private BigDecimal calculateAdjustmentAmount(PricingRule rule, BigDecimal basePrice) {
+    private BigDecimal calculateAdjustment(PricingRule rule, BigDecimal basePrice) {
         if (rule.getAdjustmentValue() == null) {
             return BigDecimal.ZERO;
         }

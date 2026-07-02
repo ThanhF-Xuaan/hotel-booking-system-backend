@@ -33,50 +33,52 @@ class PricingEngineServiceTest {
 
     @Test
     void resolveWinningRule_emptyOrNullRules_returnsEmpty() {
-        assertTrue(pricingEngineService.resolveWinningRule(null, BigDecimal.TEN).isEmpty());
-        assertTrue(pricingEngineService.resolveWinningRule(Collections.emptyList(), BigDecimal.TEN).isEmpty());
+        assertTrue(pricingEngineService.resolveWinningRule(null, java.math.BigDecimal.TEN).isEmpty());
+        assertTrue(pricingEngineService.resolveWinningRule(Collections.emptyList(), java.math.BigDecimal.TEN).isEmpty());
     }
 
     @Test
-    void resolveWinningRule_absoluteOverride_highestPriorityWins() {
-        PricingRule normal1 = createRule(1, (short) 10, AdjustmentType.FIXED, BigDecimal.TEN);
-        PricingRule override1 = createRule(2, (short) 100, AdjustmentType.FIXED, BigDecimal.ONE);
-        PricingRule override2 = createRule(3, (short) 120, AdjustmentType.FIXED, BigDecimal.ONE);
+    void resolveWinningRule_differentTypes_selectsHighestBenefit() {
+        // Base price is 2000
+        // FIXED rule: 500.0 (yields 500.0 benefit, priority 5)
+        PricingRule fixedRule = createRule(1, (short) 5, AdjustmentType.FIXED, BigDecimal.valueOf(500));
+        // PERCENT rule: 20% (yields 400.0 benefit, priority 10)
+        PricingRule percentRule = createRule(2, (short) 10, AdjustmentType.PERCENT, BigDecimal.valueOf(20));
 
-        List<PricingRule> rules = List.of(normal1, override1, override2);
-        Optional<PricingRule> winner = pricingEngineService.resolveWinningRule(rules, BigDecimal.valueOf(100));
+        List<PricingRule> rules = List.of(fixedRule, percentRule);
+        Optional<PricingRule> winner = pricingEngineService.resolveWinningRule(rules, BigDecimal.valueOf(2000));
 
         assertTrue(winner.isPresent());
-        assertEquals(3, winner.get().getId());
+        assertEquals(1, winner.get().getId()); // FIXED rule (500) > PERCENT rule (400) despite lower priority
     }
 
     @Test
-    void resolveWinningRule_noOverride_maxValueCompetitionWins() {
-        // Base price is 100
-        // Fixed: $15
-        PricingRule ruleFixed = createRule(1, (short) 5, AdjustmentType.FIXED, BigDecimal.valueOf(15));
-        // Percent: 10% of 100 = $10
-        PricingRule rulePercent = createRule(2, (short) 10, AdjustmentType.PERCENT, BigDecimal.valueOf(10));
+    void resolveWinningRule_peakSeasonOverridesHoliday_regardlessOfPriority() {
+        // Base price is 1000
+        // Holiday: 30% adjustment (yields 300.0 benefit, priority 10)
+        PricingRule holidayRule = createRule(1, (short) 10, AdjustmentType.PERCENT, BigDecimal.valueOf(30));
+        // Peak Season: 40% adjustment (yields 400.0 benefit, priority 5)
+        PricingRule peakSeasonRule = createRule(2, (short) 5, AdjustmentType.PERCENT, BigDecimal.valueOf(40));
 
-        List<PricingRule> rules = List.of(ruleFixed, rulePercent);
-        Optional<PricingRule> winner = pricingEngineService.resolveWinningRule(rules, BigDecimal.valueOf(100));
+        List<PricingRule> rules = List.of(holidayRule, peakSeasonRule);
+        Optional<PricingRule> winner = pricingEngineService.resolveWinningRule(rules, BigDecimal.valueOf(1000));
 
         assertTrue(winner.isPresent());
-        assertEquals(1, winner.get().getId()); // FIXED rule yield $15 > PERCENT rule yield $10
+        assertEquals(2, winner.get().getId()); // Peak Season (400) > Holiday (300) despite lower priority (5 < 10)
     }
 
     @Test
-    void resolveWinningRule_tieAdjustmentAmount_priorityTiebreakerWins() {
-        // Base price is 100
-        // Fixed: $15, priority 5
-        PricingRule rule1 = createRule(1, (short) 5, AdjustmentType.FIXED, BigDecimal.valueOf(15));
-        // Percent: 15% of 100 = $15, priority 15
-        PricingRule rule2 = createRule(2, (short) 15, AdjustmentType.PERCENT, BigDecimal.valueOf(15));
+    void resolveWinningRule_sameBenefitDifferentPriority_selectsHigherPriority() {
+        // Base price is 1000
+        // Rule A: 30% adjustment (yields 300.0 benefit, priority 10)
+        PricingRule ruleA = createRule(1, (short) 10, AdjustmentType.PERCENT, BigDecimal.valueOf(30));
+        // Rule B: 30% adjustment (yields 300.0 benefit, priority 20)
+        PricingRule ruleB = createRule(2, (short) 20, AdjustmentType.PERCENT, BigDecimal.valueOf(30));
 
-        List<PricingRule> rules = List.of(rule1, rule2);
-        Optional<PricingRule> winner = pricingEngineService.resolveWinningRule(rules, BigDecimal.valueOf(100));
+        List<PricingRule> rules = List.of(ruleA, ruleB);
+        Optional<PricingRule> winner = pricingEngineService.resolveWinningRule(rules, BigDecimal.valueOf(1000));
 
         assertTrue(winner.isPresent());
-        assertEquals(2, winner.get().getId()); // Rule 2 has higher priority (15 > 5)
+        assertEquals(2, winner.get().getId()); // Rule B is selected due to higher priority (20 > 10)
     }
 }

@@ -31,7 +31,11 @@ public class SecurityConfig {
                         "/swagger-ui/**",
                         "/swagger-ui.html",
                         "/hotel/api/v1/iam/auth/token",
-                        "/hotel/api/v1/iam/auth/introspect"
+                        "/hotel/api/v1/iam/auth/introspect",
+                        "/hotel/api/v1/search/**",
+                        "/hotel/api/v1/inventory/hotels/**",
+                        "/hotel/api/v1/inventory/room-types",
+                        "/hotel/api/v1/inventory/hotel-room-types"
         };
 
         @Value("${jwt.signerKey}")

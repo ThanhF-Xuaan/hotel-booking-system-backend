@@ -1,8 +1,8 @@
-package com.hotel.booking.modules.booking.entity;
+package com.hotel.booking.modules.inventory.entity;
 
 import com.hotel.booking.core.entity.BaseEntity;
-import com.hotel.booking.modules.booking.enums.RoomSlotStatus;
-import com.hotel.booking.modules.inventory.entity.RoomInstance;
+import com.hotel.booking.modules.booking.entity.BookingDetail;
+import com.hotel.booking.modules.inventory.enums.RoomSlotStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

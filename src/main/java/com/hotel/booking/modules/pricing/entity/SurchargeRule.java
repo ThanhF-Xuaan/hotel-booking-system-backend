@@ -57,7 +57,7 @@ public class SurchargeRule extends BaseEntity {
     SurchargeRuleType ruleType;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "conditions", nullable = false, columnDefinition = "jsonb")
+    @Column(name = "conditions", nullable = true, columnDefinition = "jsonb")
     SurchargeCondition conditions;
 
     @Enumerated(EnumType.STRING)

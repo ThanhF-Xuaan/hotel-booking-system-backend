@@ -1,4 +1,4 @@
-package com.hotel.booking.modules.booking.enums;
+package com.hotel.booking.modules.inventory.enums;
 
 public enum RoomSlotStatus {
     READY,

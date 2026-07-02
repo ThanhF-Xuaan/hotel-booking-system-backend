@@ -28,10 +28,16 @@ public interface SurchargeRuleRepository extends JpaRepository<SurchargeRule, In
           AND sr.endDate >= :startDate
           AND sr.isDeleted = false
           AND (:id IS NULL OR sr.id <> :id)
+          AND (
+            sr.agePolicy IS NULL
+            OR :agePolicyId IS NULL
+            OR sr.agePolicy.id = :agePolicyId
+          )
     """)
     boolean existsOverlapping(
             @Param("hotelRoomTypeId") Integer hotelRoomTypeId,
             @Param("ruleType") SurchargeRuleType ruleType,
+            @Param("agePolicyId") Short agePolicyId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("id") Integer id);

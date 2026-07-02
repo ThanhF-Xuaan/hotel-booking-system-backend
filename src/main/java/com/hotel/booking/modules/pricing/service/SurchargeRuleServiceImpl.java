@@ -15,6 +15,7 @@ import com.hotel.booking.modules.pricing.enums.SurchargeRuleType;
 import com.hotel.booking.modules.pricing.mapper.SurchargeRuleMapper;
 import com.hotel.booking.modules.pricing.repository.HotelAgePolicyRepository;
 import com.hotel.booking.modules.pricing.repository.SurchargeRuleRepository;
+import com.hotel.booking.modules.pricing.validator.SurchargeRuleValidator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -37,6 +38,7 @@ public class SurchargeRuleServiceImpl implements SurchargeRuleService {
     HotelRoomTypeRepository hotelRoomTypeRepository;
     HotelAgePolicyRepository hotelAgePolicyRepository;
     SurchargeRuleMapper surchargeRuleMapper;
+    SurchargeRuleValidator surchargeRuleValidator;
 
     @Override
     @Transactional
@@ -48,9 +50,14 @@ public class SurchargeRuleServiceImpl implements SurchargeRuleService {
 
         HotelAgePolicy agePolicy = validateAndGetAgePolicy(request.getAgePolicyId());
 
-        if (surchargeRuleRepository.existsOverlapping(request.getHotelRoomTypeId(), request.getRuleType(), request.getStartDate(), request.getEndDate(), null)) {
-            throw new AppException(ErrorCode.SURCHARGE_RULE_OVERLAPPING);
-        }
+        surchargeRuleValidator.validateNoOverlap(
+                request.getHotelRoomTypeId(),
+                request.getRuleType(),
+                request.getAgePolicyId(),
+                request.getStartDate(),
+                request.getEndDate(),
+                null
+        );
 
         SurchargeRule surchargeRule = surchargeRuleMapper.toEntity(request);
         surchargeRule.setHotelRoomType(roomType);
@@ -103,9 +110,14 @@ public class SurchargeRuleServiceImpl implements SurchargeRuleService {
 
         HotelAgePolicy agePolicy = validateAndGetAgePolicy(request.getAgePolicyId());
 
-        if (surchargeRuleRepository.existsOverlapping(request.getHotelRoomTypeId(), request.getRuleType(), request.getStartDate(), request.getEndDate(), id)) {
-            throw new AppException(ErrorCode.SURCHARGE_RULE_OVERLAPPING);
-        }
+        surchargeRuleValidator.validateNoOverlap(
+                request.getHotelRoomTypeId(),
+                request.getRuleType(),
+                request.getAgePolicyId(),
+                request.getStartDate(),
+                request.getEndDate(),
+                id
+        );
 
         surchargeRuleMapper.updateEntity(request, surchargeRule);
         surchargeRule.setHotelRoomType(roomType);

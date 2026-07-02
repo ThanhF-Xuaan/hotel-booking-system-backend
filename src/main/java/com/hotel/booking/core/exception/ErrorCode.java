@@ -264,7 +264,7 @@ public enum ErrorCode {
         SURCHARGE_RULE_START_DATE_NOT_NULL(8508, "Surcharge rule start date must not be null", HttpStatus.BAD_REQUEST),
         SURCHARGE_RULE_END_DATE_NOT_NULL(8509, "Surcharge rule end date must not be null", HttpStatus.BAD_REQUEST),
         SURCHARGE_RULE_STATUS_NOT_NULL(8510, "Surcharge rule status must not be null", HttpStatus.BAD_REQUEST),
-        SURCHARGE_RULE_OVERLAPPING(8511, "Surcharge rule dates overlap with an existing rule", HttpStatus.BAD_REQUEST),
+        SURCHARGE_RULE_OVERLAP(8511, "Surcharge rule dates overlap with an existing rule", HttpStatus.BAD_REQUEST),
 
         PRICING_RULE_OVERLAPPING(8600, "Pricing rule dates overlap with an existing rule", HttpStatus.BAD_REQUEST),
         
@@ -274,6 +274,14 @@ public enum ErrorCode {
         
         TAX_CATEGORY_NOT_FOUND(8800, "Tax category not found", HttpStatus.NOT_FOUND),
         TAX_CATEGORY_CODE_EXISTED(8801, "Tax category code already exists", HttpStatus.BAD_REQUEST),
+        
+        ROOM_NOT_FOUND(5262, "Room not found", HttpStatus.NOT_FOUND),
+        ROOM_HAS_BOOKING_CONFLICT(5263, "Room has booking conflict", HttpStatus.BAD_REQUEST),
+        ROOM_CAPACITY_EXCEEDED(5257, "Requested guest count exceeds maximum capacity allowed for this room type", HttpStatus.BAD_REQUEST),
+        INVALID_DATE_RANGE(8501, "Check-in date must be in the future and check-out must be after check-in", HttpStatus.BAD_REQUEST),
+        SEARCH_INVALID_ROOM_OCCUPANCY_CONFIGURATION(8512, "Số lượng phòng không khớp với cấu hình số lượng khách", HttpStatus.BAD_REQUEST),
+        PRICING_CALCULATION_FAILED(8513, "Pricing calculation failed due to an internal error", HttpStatus.INTERNAL_SERVER_ERROR),
+        PRICING_ROOMS_NOT_EMPTY(8514, "Danh sách phòng yêu cầu không được để trống", HttpStatus.BAD_REQUEST),
         ;
 
         ErrorCode(int code, String message, HttpStatusCode statusCode) {

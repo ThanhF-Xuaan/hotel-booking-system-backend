@@ -16,8 +16,7 @@ logging:
   level:
     root: INFO
     # Log chi tiết quá trình xác thực của Spring Security
-    org.springframework.security: DEBUG
-    org.springframework.security.web: DEBUG
+    org.springframework: INFO
 
     # Log chi tiết các class của bạn (Thay 'com.hotel.booking' bằng package của bạn)
     com.hotel.booking: DEBUG

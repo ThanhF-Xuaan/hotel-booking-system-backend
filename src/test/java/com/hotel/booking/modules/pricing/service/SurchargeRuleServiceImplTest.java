@@ -11,6 +11,7 @@ import com.hotel.booking.modules.pricing.enums.SurchargeRuleType;
 import com.hotel.booking.modules.pricing.mapper.SurchargeRuleMapper;
 import com.hotel.booking.modules.pricing.repository.HotelAgePolicyRepository;
 import com.hotel.booking.modules.pricing.repository.SurchargeRuleRepository;
+import com.hotel.booking.modules.pricing.validator.SurchargeRuleValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,6 +40,9 @@ class SurchargeRuleServiceImplTest {
 
     @Mock
     SurchargeRuleMapper surchargeRuleMapper;
+
+    @Mock
+    SurchargeRuleValidator surchargeRuleValidator;
 
     @InjectMocks
     SurchargeRuleServiceImpl surchargeRuleService;
@@ -164,7 +168,7 @@ class SurchargeRuleServiceImplTest {
     }
 
     @Test
-    void createSurchargeRule_overlappingDates_throwsSurchargeRuleOverlapping() {
+    void createSurchargeRule_overlappingDates_throwsSurchargeRuleOverlap() {
         SurchargeRuleCreateRequest request = SurchargeRuleCreateRequest.builder()
                 .hotelRoomTypeId(1)
                 .ruleType(SurchargeRuleType.EXTRA_BED)
@@ -176,14 +180,21 @@ class SurchargeRuleServiceImplTest {
 
         HotelRoomType roomType = new HotelRoomType();
         when(hotelRoomTypeRepository.findByIdAndIsDeletedFalse(1)).thenReturn(Optional.of(roomType));
-        when(surchargeRuleRepository.existsOverlapping(eq(1), eq(SurchargeRuleType.EXTRA_BED), eq(LocalDate.of(2026, 7, 10)), eq(LocalDate.of(2026, 7, 15)), any()))
-                .thenReturn(true);
+        doThrow(new AppException(ErrorCode.SURCHARGE_RULE_OVERLAP))
+                .when(surchargeRuleValidator).validateNoOverlap(
+                        eq(1),
+                        eq(SurchargeRuleType.EXTRA_BED),
+                        any(),
+                        eq(LocalDate.of(2026, 7, 10)),
+                        eq(LocalDate.of(2026, 7, 15)),
+                        any()
+                );
 
         AppException exception = assertThrows(AppException.class, () -> {
             surchargeRuleService.createSurchargeRule(request);
         });
 
-        assertEquals(ErrorCode.SURCHARGE_RULE_OVERLAPPING, exception.getErrorCode());
+        assertEquals(ErrorCode.SURCHARGE_RULE_OVERLAP, exception.getErrorCode());
     }
 }
 
