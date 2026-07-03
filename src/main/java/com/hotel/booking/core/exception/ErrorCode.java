@@ -290,6 +290,14 @@ public enum ErrorCode {
         ROOM_ADULT_CAPACITY_EXCEEDED(9004, "Số lượng người lớn vượt quá quy định", HttpStatus.BAD_REQUEST),
         ROOM_CHILD_CAPACITY_EXCEEDED(9005, "Số lượng trẻ em vượt quá quy định", HttpStatus.BAD_REQUEST),
         ROOM_INFANT_CAPACITY_EXCEEDED(9006, "Số lượng em bé vượt quá quy định", HttpStatus.BAD_REQUEST),
+
+        BOOKING_NOT_FOUND(9100, "Booking not found", HttpStatus.BAD_REQUEST),
+        ROOM_ALREADY_BLOCKED(9101, "Phòng vừa được người khác chọn, vui lòng chọn phòng khác", HttpStatus.BAD_REQUEST),
+        ROOM_NOT_BLOCKED(9102, "Phòng chưa được giữ chỗ (BLOCKED), không thể xác nhận", HttpStatus.BAD_REQUEST),
+        INVALID_ROOM_STATUS(9103, "Trạng thái phòng không hợp lệ để xác nhận", HttpStatus.BAD_REQUEST),
+        ROOM_QUANTITY_EXCEEDED(9104, "Bạn đã chọn đủ số lượng phòng của đơn này", HttpStatus.BAD_REQUEST),
+        ROOM_TYPE_MISMATCH(9105, "Phòng được chọn không khớp với loại phòng đã đặt", HttpStatus.BAD_REQUEST),
+        ROOM_ALREADY_CONFIRMED(9106, "Phòng đã được chốt cứng, không thể thay đổi", HttpStatus.BAD_REQUEST),
         ;
 
         ErrorCode(int code, String message, HttpStatusCode statusCode) {

@@ -30,6 +30,12 @@ public class AvailableRoomTypeResponse {
     @Schema(description = "Số lượng trẻ em tối đa", example = "1")
     Integer maxChildren;
 
+    @Schema(description = "Số lượng em bé tối đa", example = "2")
+    Integer maxInfants;
+
+    @Schema(description = "Tổng số lượng khách tối đa (người lớn + trẻ em)", example = "5")
+    Integer maxTotalGuests;
+
     @Schema(description = "Số lượng phòng trống tối thiểu tìm thấy trong giai đoạn", example = "5")
     Integer minAvailableCount;
 }

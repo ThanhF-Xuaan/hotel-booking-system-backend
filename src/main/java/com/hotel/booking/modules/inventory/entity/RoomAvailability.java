@@ -21,6 +21,7 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "room_availability", uniqueConstraints = {
@@ -56,6 +57,9 @@ public class RoomAvailability extends BaseEntity {
 
     @Column(name = "available_count", insertable = false, updatable = false)
     Integer availableCount;
+
+    @Column(name = "locked_until")
+    OffsetDateTime lockedUntil;
 
     @Version
     @Column(name = "version", nullable = false)

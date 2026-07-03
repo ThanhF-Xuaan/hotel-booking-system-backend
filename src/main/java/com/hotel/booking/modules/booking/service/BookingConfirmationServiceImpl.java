@@ -190,6 +190,13 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
             bookingRepository.save(booking);
             invoiceRepository.save(invoice);
 
+            OffsetDateTime deadline = OffsetDateTime.now().plusMinutes(15);
+            for (BookingDetail detail : booking.getBookingDetails()) {
+                detail.setSelectionDeadline(deadline);
+            }
+
+            bookingRepository.save(booking);
+
             // 7. Hủy phiên Redis (Ngăn Worker 10 phút chạy nhả phòng)
             redisTemplate.delete(List.of(dataKey, expireKey));
 

@@ -45,7 +45,7 @@ class PricingControllerTest {
                 .build();
 
         PricingRequest request = PricingRequest.builder()
-                .hotelId(1)
+                .hotelId((short) 1)
                 .checkIn(LocalDate.now())
                 .checkOut(LocalDate.now().minusDays(1))
                 .rooms(java.util.List.of(room))
@@ -76,7 +76,7 @@ class PricingControllerTest {
                 .build();
 
         PricingRequest request = PricingRequest.builder()
-                .hotelId(1)
+                .hotelId((short) 1)
                 .checkIn(LocalDate.now())
                 .checkOut(LocalDate.now().plusDays(2))
                 .rooms(java.util.List.of(room))

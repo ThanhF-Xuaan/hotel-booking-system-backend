@@ -7,6 +7,7 @@ import com.hotel.booking.core.exception.ErrorCode;
 import com.hotel.booking.modules.booking.dto.request.InitiateBookingRequest;
 import com.hotel.booking.modules.inventory.entity.RoomAvailability;
 import com.hotel.booking.modules.inventory.repository.RoomAvailabilityRepository;
+import com.hotel.booking.modules.inventory.service.RoomAvailabilityService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -15,6 +16,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -28,11 +30,15 @@ public class BookingInitiationServiceImpl implements BookingInitiationService{
     RoomAvailabilityRepository roomAvailabilityRepository;
     StringRedisTemplate redisTemplate;
     ObjectMapper objectMapper;
+    RoomAvailabilityService roomAvailabilityService;
 
     @Override
     @Transactional
     public String initiate(InitiateBookingRequest request) {
         log.info("Begin initiate booking");
+
+        OffsetDateTime expiration = OffsetDateTime.now().plusMinutes(15);
+
         //Re-validation
         for(InitiateBookingRequest.RoomSelection room : request.getRooms()){
             List<RoomAvailability> availabilities = roomAvailabilityRepository
@@ -56,6 +62,7 @@ public class BookingInitiationServiceImpl implements BookingInitiationService{
                 }
 
                 availability.setLockedRooms(availability.getLockedRooms() + room.getQuantity());
+                availability.setLockedUntil(expiration);
             }
 
 

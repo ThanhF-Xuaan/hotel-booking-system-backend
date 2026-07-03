@@ -34,6 +34,8 @@ public class SecurityConfig {
                         "/hotel/api/v1/iam/auth/introspect",
                         "/hotel/api/v1/search/**",
                         "/hotel/api/v1/booking/**",
+                        "/hotel/api/v1/inventory/hotels",
+                        "/hotel/api/v1/inventory/hotels/",
                         "/hotel/api/v1/inventory/hotels/**",
                         "/hotel/api/v1/inventory/room-types",
                         "/hotel/api/v1/inventory/hotel-room-types",

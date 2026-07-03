@@ -60,6 +60,9 @@ public class BookingDetail extends BaseEntity {
     @Column(name = "check_out_date", nullable = false)
     LocalDate checkOutDate;
 
+    @Column(name = "selection_deadline")
+    OffsetDateTime selectionDeadline;
+
     @Column(name = "actual_check_in_at")
     OffsetDateTime actualCheckInAt;
 

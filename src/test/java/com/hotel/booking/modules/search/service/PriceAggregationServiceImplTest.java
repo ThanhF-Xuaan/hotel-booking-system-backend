@@ -83,7 +83,7 @@ class PriceAggregationServiceImplTest {
                 .build();
 
         PricingRequest request = PricingRequest.builder()
-                .hotelId(1)
+                .hotelId((short) 1)
                 .checkIn(checkIn)
                 .checkOut(checkOut)
                 .rooms(List.of(room))
@@ -203,7 +203,7 @@ class PriceAggregationServiceImplTest {
                 .build();
 
         PricingRequest request = PricingRequest.builder()
-                .hotelId(1)
+                .hotelId((short) 1)
                 .checkIn(LocalDate.now())
                 .checkOut(LocalDate.now().plusDays(2))
                 .rooms(List.of(room))
@@ -236,7 +236,7 @@ class PriceAggregationServiceImplTest {
                 .build();
 
         PricingRequest request = PricingRequest.builder()
-                .hotelId(1)
+                .hotelId((short) 1)
                 .checkIn(checkIn)
                 .checkOut(checkOut)
                 .rooms(List.of(room))
@@ -283,7 +283,7 @@ class PriceAggregationServiceImplTest {
                 .build();
 
         PricingRequest request = PricingRequest.builder()
-                .hotelId(1)
+                .hotelId((short) 1)
                 .checkIn(checkIn)
                 .checkOut(checkOut)
                 .rooms(List.of(room))
@@ -339,7 +339,7 @@ class PriceAggregationServiceImplTest {
                 .build();
 
         PricingRequest request = PricingRequest.builder()
-                .hotelId(1)
+                .hotelId((short) 1)
                 .checkIn(checkIn)
                 .checkOut(checkOut)
                 .rooms(List.of(room))
@@ -396,7 +396,7 @@ class PriceAggregationServiceImplTest {
                 .build();
 
         PricingRequest request = PricingRequest.builder()
-                .hotelId(1)
+                .hotelId((short) 1)
                 .checkIn(checkIn)
                 .checkOut(checkOut)
                 .rooms(List.of(room))
@@ -457,7 +457,7 @@ class PriceAggregationServiceImplTest {
                 .build();
 
         PricingRequest request = PricingRequest.builder()
-                .hotelId(1)
+                .hotelId((short) 1)
                 .checkIn(checkIn)
                 .checkOut(checkOut)
                 .rooms(List.of(roomReq))
@@ -484,7 +484,7 @@ class PriceAggregationServiceImplTest {
         RoomRequest req2 = RoomRequest.builder().hotelRoomTypeId(10).occupancy(room2).build();
 
         PricingRequest request = PricingRequest.builder()
-                .hotelId(1)
+                .hotelId((short) 1)
                 .checkIn(checkIn)
                 .checkOut(checkOut)
                 .rooms(List.of(req1, req2))

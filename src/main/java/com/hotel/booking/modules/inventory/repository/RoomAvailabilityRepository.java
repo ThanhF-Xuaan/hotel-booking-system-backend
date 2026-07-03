@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,4 +53,14 @@ public interface RoomAvailabilityRepository extends JpaRepository<RoomAvailabili
     List<RoomAvailability> findByHotelRoomTypeIdAndDateBetween(
             Integer hotelRoomTypeId, LocalDate startDate, LocalDate endDate
     );
+
+    @Modifying
+    @Query("""
+    UPDATE RoomAvailability ra 
+    SET ra.lockedRooms = 0, ra.lockedUntil = null 
+    WHERE ra.lockedUntil < :now AND ra.lockedRooms > 0
+""")
+    int resetExpiredLocks(@Param("now") OffsetDateTime now);
+
+    List<RoomAvailability> findByHotelRoomTypeId(int typeId);
 }

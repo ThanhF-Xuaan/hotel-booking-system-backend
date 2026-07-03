@@ -12,4 +12,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Override
     @EntityGraph(attributePaths = {"guest", "hotel", "bookingDetails"})
     Optional<Booking> findById(Long id);
+
+    @EntityGraph(attributePaths = {"guest", "hotel", "bookingDetails"})
+    Optional<Booking> findByBookingNumber(String bookingNumber);
 }

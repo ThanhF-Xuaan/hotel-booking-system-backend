@@ -2,6 +2,8 @@ package com.hotel.booking.core.exception;
 
 import java.nio.file.AccessDeniedException;
 
+import jakarta.persistence.PessimisticLockException;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -100,5 +102,16 @@ public class GlobalHandlerException {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(apiResponse);
+    }
+
+    @ExceptionHandler({PessimisticLockException.class, CannotAcquireLockException.class})
+    public ResponseEntity<ApiResponse<Void>> handleLockTimeout(Exception e) {
+        log.warn("Lỗi tranh chấp khóa Database: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                ApiResponse.<Void>builder()
+                        .code(ErrorCode.ROOM_ALREADY_BLOCKED.getCode())
+                        .message("Hệ thống đang quá tải hoặc phòng đang được người khác thao tác. Vui lòng thử lại sau giây lát.")
+                        .build()
+        );
     }
 }

@@ -60,6 +60,8 @@ public class InventorySearchServiceImpl implements InventorySearchService {
                             .roomTypeName(roomType.getRoomType().getName())
                             .maxAdults(roomType.getMaxAdults())
                             .maxChildren(roomType.getMaxChildren())
+                            .maxInfants(roomType.getMaxInfants())
+                            .maxTotalGuests(roomType.getMaxTotalGuests())
                             .minAvailableCount(minAvailable != null ? minAvailable.intValue() : 0)
                             .build();
                 })
