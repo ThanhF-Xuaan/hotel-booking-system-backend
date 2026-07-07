@@ -4,6 +4,7 @@ import com.hotel.booking.core.enums.ActiveStatus;
 import com.hotel.booking.modules.inventory.entity.Hotel;
 import com.hotel.booking.modules.inventory.entity.HotelRoomType;
 import com.hotel.booking.modules.inventory.entity.RoomType;
+import com.hotel.booking.modules.inventory.repository.HotelRoomTypeCatalogItemRepository;
 import com.hotel.booking.modules.inventory.repository.HotelRoomTypeRepository;
 import com.hotel.booking.modules.pricing.entity.DiscountRule;
 import com.hotel.booking.modules.pricing.entity.DiscountRuleTypeConfig;
@@ -58,6 +59,8 @@ class PriceAggregationServiceImplTest {
     SurchargeRuleRepository surchargeRuleRepository;
     @Mock
     TaxCategoryRepository taxCategoryRepository;
+    @Mock
+    HotelRoomTypeCatalogItemRepository hotelRoomTypeCatalogItemRepository;
     @Mock
     PricingEngineService pricingEngineService;
     @Mock
@@ -150,31 +153,15 @@ class PriceAggregationServiceImplTest {
         when(discountRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(List.of(discountRule));
         when(surchargeRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(List.of(surchargeRule));
         when(taxCategoryRepository.findAllByIsDeletedFalse()).thenReturn(List.of(taxCategory));
+        when(hotelRoomTypeCatalogItemRepository.findAllByHotelRoomTypeId(any())).thenReturn(Collections.emptyList());
 
         when(pricingEngineService.resolveWinningRule(any(), any())).thenReturn(Optional.of(pricingRule));
-        when(taxCalculatorService.getTaxRate(eq(5), any())).thenReturn(BigDecimal.valueOf(10.0)); // 10% VAT
+        when(taxCalculatorService.calculateTax(eq(5), any(), any())).thenAnswer(invocation -> {
+            BigDecimal amount = invocation.getArgument(1);
+            return amount.multiply(BigDecimal.valueOf(0.1)); // 10% VAT
+        });
 
         PricingResponse response = priceAggregationService.calculatePrice(request);
-
-        // Verification of math:
-        // - Base per night = 1000.0
-        // - Peak Season Adjustment = +100.0 -> Adjusted price = 1100.0
-        // - Early Bird Discount = 10% of 1100 = 110.0 -> Discounted price = 990.0
-        // - Surcharge (1 extra adult) = 200.0
-        // - Service Fee Subtotal = 990.0 + 200.0 = 1190.0
-        // - Service Fee = 1190.0 * 10% = 119.0
-        // - Taxable Amount = 1190.0 + 119.0 = 1309.0
-        // - VAT = 1309.0 * 10% = 130.9
-        // - Final Price per night = 1309.0 + 130.9 = 1439.90
-        //
-        // Totals for 2 nights:
-        // - Total Base = 2000.0
-        // - Total Adjustment = 200.0
-        // - Total Discount = 220.0
-        // - Total Surcharge = 400.0
-        // - Total Service Fee = 238.0
-        // - Total Tax = 261.80
-        // - Total Final = 2879.80
 
         PricingResponse.PriceDetail grand = response.getGrandTotal();
         assertEquals(BigDecimal.valueOf(2000.0), grand.getBasePrice());
@@ -247,6 +234,10 @@ class PriceAggregationServiceImplTest {
                 .hotel(Hotel.builder().id((short) 1).serviceFeePercent(BigDecimal.ZERO).build())
                 .basePrice(BigDecimal.valueOf(500.0))
                 .standardAdults(2)
+                .standardChildren(0)
+                .maxAdults(4)
+                .maxChildren(2)
+                .maxInfants(1)
                 .maxTotalGuests(4)
                 .build();
 
@@ -261,7 +252,8 @@ class PriceAggregationServiceImplTest {
         when(discountRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(Collections.emptyList());
         when(surchargeRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(Collections.emptyList());
         when(taxCategoryRepository.findAllByIsDeletedFalse()).thenReturn(List.of(taxCategory));
-        when(taxCalculatorService.getTaxRate(eq(5), any())).thenReturn(BigDecimal.ZERO);
+        when(hotelRoomTypeCatalogItemRepository.findAllByHotelRoomTypeId(any())).thenReturn(Collections.emptyList());
+        when(taxCalculatorService.calculateTax(eq(5), any(), any())).thenReturn(BigDecimal.ZERO);
 
         PricingResponse response = priceAggregationService.calculatePrice(request);
 
@@ -294,6 +286,10 @@ class PriceAggregationServiceImplTest {
                 .hotel(Hotel.builder().id((short) 1).serviceFeePercent(BigDecimal.ZERO).build())
                 .basePrice(BigDecimal.valueOf(1000.0))
                 .standardAdults(2)
+                .standardChildren(0)
+                .maxAdults(4)
+                .maxChildren(2)
+                .maxInfants(1)
                 .maxTotalGuests(4)
                 .build();
 
@@ -317,7 +313,8 @@ class PriceAggregationServiceImplTest {
         when(discountRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(List.of(discountRule));
         when(surchargeRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(Collections.emptyList());
         when(taxCategoryRepository.findAllByIsDeletedFalse()).thenReturn(List.of(taxCategory));
-        when(taxCalculatorService.getTaxRate(eq(5), any())).thenReturn(BigDecimal.ZERO);
+        when(hotelRoomTypeCatalogItemRepository.findAllByHotelRoomTypeId(any())).thenReturn(Collections.emptyList());
+        when(taxCalculatorService.calculateTax(eq(5), any(), any())).thenReturn(BigDecimal.ZERO);
 
         PricingResponse response = priceAggregationService.calculatePrice(request);
 
@@ -350,6 +347,10 @@ class PriceAggregationServiceImplTest {
                 .hotel(Hotel.builder().id((short) 1).serviceFeePercent(BigDecimal.ZERO).build())
                 .basePrice(BigDecimal.valueOf(1000.0))
                 .standardAdults(2)
+                .standardChildren(0)
+                .maxAdults(4)
+                .maxChildren(2)
+                .maxInfants(1)
                 .maxTotalGuests(4)
                 .build();
 
@@ -373,8 +374,9 @@ class PriceAggregationServiceImplTest {
         when(discountRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(Collections.emptyList());
         when(surchargeRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(Collections.emptyList());
         when(taxCategoryRepository.findAllByIsDeletedFalse()).thenReturn(List.of(taxCategory));
+        when(hotelRoomTypeCatalogItemRepository.findAllByHotelRoomTypeId(any())).thenReturn(Collections.emptyList());
         when(pricingEngineService.resolveWinningRule(any(), any())).thenReturn(Optional.of(pricingRule));
-        when(taxCalculatorService.getTaxRate(eq(5), any())).thenReturn(BigDecimal.ZERO);
+        when(taxCalculatorService.calculateTax(eq(5), any(), any())).thenReturn(BigDecimal.ZERO);
 
         PricingResponse response = priceAggregationService.calculatePrice(request);
 
@@ -407,6 +409,10 @@ class PriceAggregationServiceImplTest {
                 .hotel(Hotel.builder().id((short) 1).serviceFeePercent(BigDecimal.ZERO).build())
                 .basePrice(BigDecimal.valueOf(1000.0))
                 .standardAdults(2)
+                .standardChildren(0)
+                .maxAdults(4)
+                .maxChildren(2)
+                .maxInfants(1)
                 .maxTotalGuests(4)
                 .build();
 
@@ -435,7 +441,8 @@ class PriceAggregationServiceImplTest {
         when(discountRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(Collections.emptyList());
         when(surchargeRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(List.of(surchargeRule));
         when(taxCategoryRepository.findAllByIsDeletedFalse()).thenReturn(List.of(taxCategory));
-        when(taxCalculatorService.getTaxRate(eq(5), any())).thenReturn(BigDecimal.ZERO);
+        when(hotelRoomTypeCatalogItemRepository.findAllByHotelRoomTypeId(any())).thenReturn(Collections.emptyList());
+        when(taxCalculatorService.calculateTax(eq(5), any(), any())).thenReturn(BigDecimal.ZERO);
 
         PricingResponse response = priceAggregationService.calculatePrice(request);
 
@@ -533,28 +540,25 @@ class PriceAggregationServiceImplTest {
         when(discountRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(Collections.emptyList());
         when(surchargeRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(10)).thenReturn(List.of(rule));
         when(taxCategoryRepository.findAllByIsDeletedFalse()).thenReturn(List.of(taxCategory));
+        when(hotelRoomTypeCatalogItemRepository.findAllByHotelRoomTypeId(any())).thenReturn(Collections.emptyList());
         when(pricingEngineService.resolveWinningRule(any(), any())).thenReturn(Optional.empty());
-        when(taxCalculatorService.getTaxRate(eq(5), any())).thenReturn(BigDecimal.ZERO);
+        when(taxCalculatorService.calculateTax(eq(5), any(), any())).thenReturn(BigDecimal.ZERO);
 
         PricingResponse response = priceAggregationService.calculatePrice(request);
 
-        // Verify grandTotal
         PricingResponse.PriceDetail grand = response.getGrandTotal();
         assertEquals(BigDecimal.valueOf(2000.0), grand.getBasePrice());
         assertEquals(BigDecimal.valueOf(200.0), grand.getSurchargeAmount());
         assertEquals(BigDecimal.valueOf(2200.00).setScale(2), grand.getFinalPrice());
 
-        // Verify rooms list size
         assertEquals(2, response.getRooms().size());
 
-        // Room 1 (index 0) - has surcharge
         PricingResponse.RoomPricingResult result1 = response.getRooms().get(0);
         assertEquals(10, result1.getHotelRoomTypeId());
         assertEquals(BigDecimal.valueOf(1000.0), result1.getPriceDetail().getBasePrice());
         assertEquals(BigDecimal.valueOf(200.0), result1.getPriceDetail().getSurchargeAmount());
         assertEquals(BigDecimal.valueOf(1200.00).setScale(2), result1.getPriceDetail().getFinalPrice());
 
-        // Room 2 (index 1) - no surcharge
         PricingResponse.RoomPricingResult result2 = response.getRooms().get(1);
         assertEquals(10, result2.getHotelRoomTypeId());
         assertEquals(BigDecimal.valueOf(1000.0), result2.getPriceDetail().getBasePrice());

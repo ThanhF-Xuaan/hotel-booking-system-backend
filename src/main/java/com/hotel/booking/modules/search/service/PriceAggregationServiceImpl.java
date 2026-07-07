@@ -3,8 +3,8 @@ package com.hotel.booking.modules.search.service;
 import com.hotel.booking.core.enums.ActiveStatus;
 import com.hotel.booking.core.exception.AppException;
 import com.hotel.booking.core.exception.ErrorCode;
-import com.hotel.booking.modules.crm.enums.GuestType;
 import com.hotel.booking.modules.inventory.entity.HotelRoomType;
+import com.hotel.booking.modules.inventory.repository.HotelRoomTypeCatalogItemRepository;
 import com.hotel.booking.modules.inventory.repository.HotelRoomTypeRepository;
 import com.hotel.booking.modules.pricing.entity.DiscountRule;
 import com.hotel.booking.modules.pricing.entity.PricingRule;
@@ -48,13 +48,14 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
     DiscountRuleRepository discountRuleRepository;
     SurchargeRuleRepository surchargeRuleRepository;
     TaxCategoryRepository taxCategoryRepository;
+    HotelRoomTypeCatalogItemRepository hotelRoomTypeCatalogItemRepository;
 
     PricingEngineService pricingEngineService;
     TaxCalculatorService taxCalculatorService;
 
     @Override
     public PricingResponse calculatePrice(PricingRequest request) {
-        try{
+        try {
             log.info("Calculating flat-list room price breakdown for hotel: {}, checkIn: {}, checkOut: {}",
                     request.getHotelId(), request.getCheckIn(), request.getCheckOut());
 
@@ -79,6 +80,7 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
             BigDecimal grandAdjustment = BigDecimal.ZERO;
             BigDecimal grandDiscount = BigDecimal.ZERO;
             BigDecimal grandSurcharge = BigDecimal.ZERO;
+            BigDecimal grandAddOn = BigDecimal.ZERO; // BỔ SUNG ADD ON AMOUNT
             BigDecimal grandServiceFee = BigDecimal.ZERO;
             BigDecimal grandTax = BigDecimal.ZERO;
             BigDecimal grandFinal = BigDecimal.ZERO;
@@ -96,24 +98,32 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                 }
 
                 // Capacity validation per room unit
+                // Capacity validation per room unit
                 RoomOccupancy occ = roomReq.getOccupancy();
-                int totalGuests = occ.getAdults() + (occ.getChildren() != null ? occ.getChildren() : 0);
+
+                // [FIX BẤT TỬ]: Chống NPE do Auto-Unboxing
+                int reqAdults = occ.getAdults() != null ? occ.getAdults() : 0;
+                int reqChildren = occ.getChildren() != null ? occ.getChildren() : 0;
+                int reqInfants = occ.getInfants() != null ? occ.getInfants() : 0;
+
+                int totalGuests = reqAdults + reqChildren;
+
                 if (totalGuests > roomType.getMaxTotalGuests()) {
                     throw new AppException(ErrorCode.ROOM_CAPACITY_EXCEEDED);
                 }
 
-                if (occ.getAdults() != null && occ.getAdults() > roomType.getMaxAdults()) {
-                    log.warn("Validation failed: Adults {} > MaxAdults {}", occ.getAdults(), roomType.getMaxAdults());
+                if (reqAdults > roomType.getMaxAdults()) {
+                    log.warn("Validation failed: Adults {} > MaxAdults {}", reqAdults, roomType.getMaxAdults());
                     throw new AppException(ErrorCode.ROOM_ADULT_CAPACITY_EXCEEDED);
                 }
 
-                if (occ.getChildren() != null && occ.getChildren() > roomType.getMaxChildren()) {
-                    log.warn("Validation failed: Children {} > MaxChildren {}", occ.getChildren(), roomType.getMaxChildren());
+                if (reqChildren > roomType.getMaxChildren()) {
+                    log.warn("Validation failed: Children {} > MaxChildren {}", reqChildren, roomType.getMaxChildren());
                     throw new AppException(ErrorCode.ROOM_CHILD_CAPACITY_EXCEEDED);
                 }
 
-                if (occ.getInfants() != null && occ.getInfants() > roomType.getMaxInfants()) {
-                    log.warn("Validation failed: Infants {} > MaxInfants {}", occ.getInfants(), roomType.getMaxInfants());
+                if (reqInfants > roomType.getMaxInfants()) {
+                    log.warn("Validation failed: Infants {} > MaxInfants {}", reqInfants, roomType.getMaxInfants());
                     throw new AppException(ErrorCode.ROOM_INFANT_CAPACITY_EXCEEDED);
                 }
 
@@ -134,6 +144,8 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                 RoomRequest virtualRoom = RoomRequest.builder()
                         .hotelRoomTypeId(roomReq.getHotelRoomTypeId())
                         .occupancy(occ)
+                        // Bắt buộc truyền AddOns xuống Context để xử lý
+                        .addOns(roomReq.getAddOns())
                         .build();
 
                 PricingRequest virtualRequest = PricingRequest.builder()
@@ -147,6 +159,7 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                 BigDecimal roomAdjustment = BigDecimal.ZERO;
                 BigDecimal roomDiscount = BigDecimal.ZERO;
                 BigDecimal roomSurcharge = BigDecimal.ZERO;
+                BigDecimal roomAddOnAmount = BigDecimal.ZERO; // BỔ SUNG ADD ON AMOUNT
                 BigDecimal roomServiceFee = BigDecimal.ZERO;
                 BigDecimal roomTax = BigDecimal.ZERO;
                 BigDecimal roomFinal = BigDecimal.ZERO;
@@ -167,6 +180,8 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                             .discountAmount(BigDecimal.ZERO)
                             .discountedPrice(BigDecimal.ZERO)
                             .surchargeAmount(BigDecimal.ZERO)
+                            .addOnAmount(BigDecimal.ZERO) // Khởi tạo Zero
+                            .addOnTaxAmount(BigDecimal.ZERO) // Khởi tạo Zero
                             .serviceFeeAmount(BigDecimal.ZERO)
                             .taxAmount(BigDecimal.ZERO)
                             .finalPrice(BigDecimal.ZERO)
@@ -180,16 +195,19 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                     roomAdjustment = roomAdjustment.add(context.getPriceAdjustment());
                     roomDiscount = roomDiscount.add(context.getDiscountAmount());
                     roomSurcharge = roomSurcharge.add(context.getSurchargeAmount());
+                    roomAddOnAmount = roomAddOnAmount.add(context.getAddOnAmount()); // CỘNG DỒN ADD ON
                     roomServiceFee = roomServiceFee.add(context.getServiceFeeAmount());
                     roomTax = roomTax.add(context.getTaxAmount());
                     roomFinal = roomFinal.add(context.getFinalPrice());
                 }
 
+                // Gán đúng biến addOnAmount vào PriceDetail
                 PricingResponse.PriceDetail priceDetail = PricingResponse.PriceDetail.builder()
                         .basePrice(roomBase)
                         .priceAdjustment(roomAdjustment)
                         .discountAmount(roomDiscount)
                         .surchargeAmount(roomSurcharge)
+                        .addOnAmount(roomAddOnAmount) // TRUYỀN VÀO BUILDER
                         .serviceFeeAmount(roomServiceFee)
                         .taxAmount(roomTax)
                         .finalPrice(roomFinal)
@@ -205,6 +223,7 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                 grandAdjustment = grandAdjustment.add(roomAdjustment);
                 grandDiscount = grandDiscount.add(roomDiscount);
                 grandSurcharge = grandSurcharge.add(roomSurcharge);
+                grandAddOn = grandAddOn.add(roomAddOnAmount); // CỘNG DỒN GRAND ADD ON
                 grandServiceFee = grandServiceFee.add(roomServiceFee);
                 grandTax = grandTax.add(roomTax);
                 grandFinal = grandFinal.add(roomFinal);
@@ -215,6 +234,7 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                     .priceAdjustment(grandAdjustment)
                     .discountAmount(grandDiscount)
                     .surchargeAmount(grandSurcharge)
+                    .addOnAmount(grandAddOn) // TRUYỀN VÀO BUILDER TỔNG
                     .serviceFeeAmount(grandServiceFee)
                     .taxAmount(grandTax)
                     .finalPrice(grandFinal)
@@ -234,22 +254,30 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
 
     private List<PriceProcessor> buildProcessors() {
         return List.of(
-                // Step 1: Base Price Setup
+                // ==============================================================
+                // Step 1: Setup giá gốc hạng phòng
+                // ==============================================================
                 context -> context.setBasePrice(context.getHotelRoomType().getBasePrice()),
 
-                // Step 2: Calendar Adjustments (Holiday / Weekend)
+                // ==============================================================
+                // Step 2: Điều chỉnh giá theo lịch (Ngày lễ / Cuối tuần)
+                // ==============================================================
                 context -> {
                     List<PricingRule> activeRules = context.getPricingRules().stream()
-                            .filter(rule -> ActiveStatus.ACTIVE == rule.getStatus()
-                                    && !rule.getStartDate().isAfter(context.getDate())
-                                    && !rule.getEndDate().isBefore(context.getDate()))
+                            .filter(rule -> {
+                                String statusStr = rule.getStatus() != null ? rule.getStatus().toString() : "";
+                                return "ACTIVE".equalsIgnoreCase(statusStr)
+                                        && !rule.getStartDate().isAfter(context.getDate())
+                                        && !rule.getEndDate().isBefore(context.getDate());
+                            })
                             .toList();
 
                     var winningRuleOpt = pricingEngineService.resolveWinningRule(activeRules, context.getBasePrice());
                     if (winningRuleOpt.isPresent()) {
                         PricingRule rule = winningRuleOpt.get();
                         BigDecimal adjustment;
-                        if (rule.getAdjustmentType() == AdjustmentType.FIXED) {
+                        String adjTypeName = rule.getAdjustmentType() != null ? rule.getAdjustmentType().toString() : "";
+                        if ("FIXED".equalsIgnoreCase(adjTypeName)) {
                             adjustment = rule.getAdjustmentValue();
                         } else {
                             adjustment = context.getBasePrice().multiply(rule.getAdjustmentValue())
@@ -263,62 +291,48 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                     }
                 },
 
-                // Step 3: Discount Evaluation (Applies on room price: basePrice +
-                // priceAdjustment)
+                // ==============================================================
+                // Step 3: Tính toán giảm giá (Discount)
+                // ==============================================================
                 context -> {
                     long advanceDays = ChronoUnit.DAYS.between(LocalDate.now(), context.getRequest().getCheckIn());
                     List<DiscountRule> matchingRules = context.getDiscountRules().stream()
-                            .filter(rule -> ActiveStatus.ACTIVE == rule.getStatus()
-                                    && !rule.getStartDate().isAfter(context.getDate())
-                                    && !rule.getEndDate().isBefore(context.getDate()))
+                            .filter(rule -> {
+                                String statusStr = rule.getStatus() != null ? rule.getStatus().toString() : "";
+                                return "ACTIVE".equalsIgnoreCase(statusStr)
+                                        && !rule.getStartDate().isAfter(context.getDate())
+                                        && !rule.getEndDate().isBefore(context.getDate());
+                            })
                             .filter(rule -> {
                                 var cond = rule.getConditions();
-                                if (cond == null) {
-                                    return true;
-                                }
-                                if (cond.getPromoCode() != null && !cond.getPromoCode().isBlank()) {
-                                    return false; // Skip promo codes for search queries
-                                }
-                                if (cond.getMinNights() != null && context.getNumberOfNights() < cond.getMinNights()) {
-                                    return false;
-                                }
-                                if (cond.getMaxNights() != null && context.getNumberOfNights() > cond.getMaxNights()) {
-                                    return false;
-                                }
-                                if (cond.getMinAdvanceBookingDays() != null
-                                        && advanceDays < cond.getMinAdvanceBookingDays()) {
-                                    return false;
-                                }
+                                if (cond == null) return true;
+                                if (cond.getPromoCode() != null && !cond.getPromoCode().isBlank()) return false;
+                                if (cond.getMinNights() != null && context.getNumberOfNights() < cond.getMinNights()) return false;
+                                if (cond.getMaxNights() != null && context.getNumberOfNights() > cond.getMaxNights()) return false;
+                                if (cond.getMinAdvanceBookingDays() != null && advanceDays < cond.getMinAdvanceBookingDays()) return false;
                                 return true;
                             })
                             .toList();
 
-                    // Calculate discount amount for each matching rule based on
-                    // calendarAdjustedPrice
                     class DiscountEvaluationContext {
                         final DiscountRule rule;
                         final BigDecimal benefit;
-
                         DiscountEvaluationContext(DiscountRule rule, BigDecimal benefit) {
                             this.rule = rule;
                             this.benefit = benefit;
                         }
-
-                        BigDecimal getBenefit() {
-                            return benefit;
-                        }
-
+                        BigDecimal getBenefit() { return benefit; }
                         short getPriority() {
                             return rule.getRuleType() != null && rule.getRuleType().getPriority() != null
-                                    ? rule.getRuleType().getPriority()
-                                    : 0;
+                                    ? rule.getRuleType().getPriority() : 0;
                         }
                     }
 
                     var winningDiscountOpt = matchingRules.stream()
                             .map(rule -> {
                                 BigDecimal discountAmount;
-                                if (rule.getDiscountType() == AdjustmentType.FIXED) {
+                                String discTypeName = rule.getDiscountType() != null ? rule.getDiscountType().toString() : "";
+                                if ("FIXED".equalsIgnoreCase(discTypeName)) {
                                     discountAmount = rule.getDiscountValue();
                                 } else {
                                     discountAmount = context.getCalendarAdjustedPrice()
@@ -340,99 +354,238 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                     }
                 },
 
-                // Step 4: Surcharge Assessment (Extra Person)
+                // ==============================================================
+                // Step 4: Phụ thu thêm người (CẢ NGƯỜI LỚN VÀ TRẺ EM - STRICT MODE)
+                // ==============================================================
                 context -> {
-                    List<SurchargeRule> activeRules = context.getSurchargeRules().stream()
-                            .filter(rule -> (rule.getStatus() == null || ActiveStatus.ACTIVE == rule.getStatus())
-                                    && !rule.getStartDate().isAfter(context.getDate())
-                                    && !rule.getEndDate().isBefore(context.getDate())
-                                    && rule.getRuleType() == SurchargeRuleType.EXTRA_PERSON)
-                            .toList();
-
-                    log.info("Surcharge assessment: loaded {} active EXTRA_PERSON rules for date {}",
-                            activeRules.size(), context.getDate());
-
                     BigDecimal dailySurcharge = BigDecimal.ZERO;
-                    var roomType = context.getHotelRoomType();
-                    var roomRequest = context.getRequest().getRooms().get(0);
-                    var roomOccupancy = roomRequest.getOccupancy();
-                    int extraAdults = Math.max(0, roomOccupancy.getAdults() - (roomType.getStandardAdults() != null ? roomType.getStandardAdults() : 0));
-                    int extraChildren = Math.max(0, (roomOccupancy.getChildren() != null ? roomOccupancy.getChildren() : 0) - (roomType.getStandardChildren() != null ? roomType.getStandardChildren() : 0));
-                    int extraInfants = roomOccupancy.getInfants() != null ? roomOccupancy.getInfants() : 0;
+                    RoomOccupancy occ = context.getRequest().getRooms().get(0).getOccupancy();
 
-                    for (SurchargeRule rule : activeRules) {
-                        var policy = rule.getAgePolicy();
-                        int extraCount = 0;
-                        if (policy == null) {
-                            // General rule: applies to extra adults and children
-                            extraCount = extraAdults + extraChildren;
-                            log.info("Rule ID {}: general policy (null) applied. extraCount = {}", rule.getId(),
-                                    extraCount);
-                        } else {
-                            try {
-                                GuestType type = GuestType.valueOf(policy.getGuestType().toUpperCase());
-                                switch (type) {
-                                    case ADULT -> extraCount = extraAdults;
-                                    case CHILD -> extraCount = extraChildren;
-                                    case INFANT -> extraCount = extraInfants;
-                                    default -> {
-                                        extraCount = extraAdults + extraChildren;
-                                        log.warn(
-                                                "Rule ID {}: unknown enum guestType {}, falling back to sum of extra adults and children",
-                                                rule.getId(), type);
-                                    }
-                                }
-                                log.info(
-                                        "Rule ID {}: policy type {} matched. extraCount = {} (adults={}, children={}, infants={})",
-                                        rule.getId(), type, extraCount, extraAdults, extraChildren, extraInfants);
-                            } catch (IllegalArgumentException | NullPointerException e) {
-                                extraCount = extraAdults + extraChildren;
-                                log.warn(
-                                        "Rule ID {}: failed to parse guestType '{}' or agePolicy is invalid, falling back to sum of extra adults and children.",
-                                        rule.getId(), policy.getGuestType());
-                            }
-                        }
+                    // -----------------------------------------------------
+                    // 1. XỬ LÝ PHỤ THU NGƯỜI LỚN (ADULT - CHECK HẲN HOI)
+                    // -----------------------------------------------------
+                    int standardAdults = context.getHotelRoomType().getStandardAdults();
+                    int requestedAdults = occ.getAdults() != null ? occ.getAdults() : 0; // Chống NPE
 
-                        if (extraCount > 0) {
-                            BigDecimal singleSurcharge;
-                            if (rule.getAdjustmentType() == AdjustmentType.FIXED) {
-                                singleSurcharge = rule.getAdjustmentValue();
+                    if (requestedAdults > standardAdults) {
+                        int extraAdults = requestedAdults - standardAdults;
+
+                        var extraAdultRuleOpt = context.getSurchargeRules().stream()
+                                .filter(rule -> {
+                                    String ruleTypeStr = rule.getRuleType() != null ? rule.getRuleType().toString() : "";
+                                    String statusStr = rule.getStatus() != null ? rule.getStatus().toString() : "";
+
+                                    boolean matchesType = "EXTRA_PERSON".equalsIgnoreCase(ruleTypeStr);
+                                    boolean isActive = "ACTIVE".equalsIgnoreCase(statusStr);
+                                    boolean isCurrentDate = !rule.getStartDate().isAfter(context.getDate()) && !rule.getEndDate().isBefore(context.getDate());
+
+                                    // [FIX]: Bắt buộc CÓ AgePolicy VÀ guestType = ADULT
+                                    boolean isAdultPolicy = rule.getAgePolicy() != null
+                                            && rule.getAgePolicy().getGuestType() != null
+                                            && "ADULT".equalsIgnoreCase(rule.getAgePolicy().getGuestType().toString());
+
+                                    return matchesType && isActive && isCurrentDate && isAdultPolicy;
+                                })
+                                .findFirst();
+
+                        if (extraAdultRuleOpt.isPresent()) {
+                            SurchargeRule rule = extraAdultRuleOpt.get();
+                            BigDecimal chargePerAdult;
+
+                            String adjTypeName = rule.getAdjustmentType() != null ? rule.getAdjustmentType().toString() : "";
+                            if ("FIXED".equalsIgnoreCase(adjTypeName)) {
+                                chargePerAdult = rule.getAdjustmentValue();
                             } else {
-                                singleSurcharge = context.getBasePrice().multiply(rule.getAdjustmentValue())
+                                chargePerAdult = context.getHotelRoomType().getBasePrice()
+                                        .multiply(rule.getAdjustmentValue())
                                         .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
                             }
-                            BigDecimal calculatedSurcharge = singleSurcharge.multiply(BigDecimal.valueOf(extraCount));
-                            dailySurcharge = dailySurcharge.add(calculatedSurcharge);
-                            log.info("Rule ID {}: single surcharge = {}, calculated surcharge for {} guests = {}",
-                                    rule.getId(), singleSurcharge, extraCount, calculatedSurcharge);
+                            dailySurcharge = dailySurcharge.add(chargePerAdult.multiply(BigDecimal.valueOf(extraAdults)));
                         }
                     }
+
+                    // -----------------------------------------------------
+                    // 2. XỬ LÝ PHỤ THU TRẺ EM (CHILD - CHECK HẲN HOI)
+                    // -----------------------------------------------------
+                    int standardChildren = context.getHotelRoomType().getStandardChildren();
+                    int requestedChildren = occ.getChildren() != null ? occ.getChildren() : 0; // Chống NPE
+
+                    if (requestedChildren > standardChildren) {
+                        int extraChildren = requestedChildren - standardChildren;
+
+                        var extraChildRuleOpt = context.getSurchargeRules().stream()
+                                .filter(rule -> {
+                                    String ruleTypeStr = rule.getRuleType() != null ? rule.getRuleType().toString() : "";
+                                    String statusStr = rule.getStatus() != null ? rule.getStatus().toString() : "";
+
+                                    boolean matchesType = "EXTRA_PERSON".equalsIgnoreCase(ruleTypeStr);
+                                    boolean isActive = "ACTIVE".equalsIgnoreCase(statusStr);
+                                    boolean isCurrentDate = !rule.getStartDate().isAfter(context.getDate()) && !rule.getEndDate().isBefore(context.getDate());
+
+                                    // [FIX]: Bắt buộc CÓ AgePolicy VÀ guestType = CHILD
+                                    boolean isChildPolicy = rule.getAgePolicy() != null
+                                            && rule.getAgePolicy().getGuestType() != null
+                                            && "CHILD".equalsIgnoreCase(rule.getAgePolicy().getGuestType().toString());
+
+                                    return matchesType && isActive && isCurrentDate && isChildPolicy;
+                                })
+                                .findFirst();
+
+                        if (extraChildRuleOpt.isPresent()) {
+                            SurchargeRule rule = extraChildRuleOpt.get();
+                            BigDecimal chargePerChild;
+
+                            String adjTypeName = rule.getAdjustmentType() != null ? rule.getAdjustmentType().toString() : "";
+                            if ("FIXED".equalsIgnoreCase(adjTypeName)) {
+                                chargePerChild = rule.getAdjustmentValue();
+                            } else {
+                                chargePerChild = context.getHotelRoomType().getBasePrice()
+                                        .multiply(rule.getAdjustmentValue())
+                                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                            }
+                            dailySurcharge = dailySurcharge.add(chargePerChild.multiply(BigDecimal.valueOf(extraChildren)));
+                        }
+                    }
+
                     context.setSurchargeAmount(dailySurcharge);
                 },
 
-                // Step 5: Service Fee Calculation
-                // Subtotal = (Base + Adjustment) - Discount + Surcharge
+                // ==============================================================
+                // Step 4.5: Tính toán dịch vụ đi kèm (Add-ons / Package Items)
+                // ==============================================================
                 context -> {
-                    BigDecimal subtotal = context.getDiscountedPrice().add(context.getSurchargeAmount());
+                    BigDecimal dailyAddOn = BigDecimal.ZERO;
+                    BigDecimal dailyAddOnTax = BigDecimal.ZERO;
+
+                    // Lấy % Phí dịch vụ của khách sạn
                     BigDecimal feePercent = context.getHotelRoomType().getHotel().getServiceFeePercent();
-                    if (feePercent == null) {
-                        feePercent = BigDecimal.ZERO;
+                    if (feePercent == null) feePercent = BigDecimal.ZERO;
+
+                    var mappedItems = hotelRoomTypeCatalogItemRepository
+                            .findAllByHotelRoomTypeId(context.getHotelRoomType().getId());
+
+                    boolean isFirstDay = context.getDate().equals(context.getRequest().getCheckIn());
+
+                    // A. Xử lý hàng bắt buộc (MANDATORY)
+                    for (var mapped : mappedItems) {
+                        String itemUsageStr = mapped.getItemUsage() != null ? mapped.getItemUsage().toString() : "";
+                        if ("MANDATORY".equalsIgnoreCase(itemUsageStr)) {
+                            String pricingTypeStr = mapped.getPricingType() != null ? mapped.getPricingType().toString() : "";
+                            boolean isPerNight = "PER_NIGHT".equalsIgnoreCase(pricingTypeStr);
+
+                            if (isPerNight || isFirstDay) {
+                                BigDecimal itemPrice = mapped.getPrice();
+                                dailyAddOn = dailyAddOn.add(itemPrice);
+
+                                // Tính Phí dịch vụ riêng cho Item này
+                                BigDecimal itemServiceFee = itemPrice.multiply(feePercent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                                BigDecimal itemTaxableAmount = itemPrice.add(itemServiceFee);
+
+                                // Dùng TaxCalculatorService tính Thuế chuẩn xác cho Item này
+                                BigDecimal itemTax = taxCalculatorService.calculateTax(
+                                        mapped.getCatalogItem().getTaxCategory().getId(),
+                                        itemTaxableAmount,
+                                        context.getDate()
+                                );
+                                dailyAddOnTax = dailyAddOnTax.add(itemTax);
+                            }
+                        }
                     }
-                    BigDecimal feeAmount = subtotal.multiply(feePercent)
-                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-                    context.setServiceFeeAmount(feeAmount);
+
+                    // B. Xử lý hàng tự chọn (OPTIONAL)
+                    if (context.getRequest().getRooms().get(0).getAddOns() != null) {
+                        for (RoomRequest.SelectedAddOn reqAddOn : context.getRequest().getRooms().get(0).getAddOns()) {
+                            for (var mapped : mappedItems) {
+                                String itemUsageStr = mapped.getItemUsage() != null ? mapped.getItemUsage().toString() : "";
+                                boolean isSameId = mapped.getCatalogItem().getId().longValue() == reqAddOn.getCatalogItemId().longValue();
+
+                                if (isSameId && "OPTIONAL".equalsIgnoreCase(itemUsageStr)) {
+                                    String pricingTypeStr = mapped.getPricingType() != null ? mapped.getPricingType().toString() : "";
+                                    boolean isPerNight = "PER_NIGHT".equalsIgnoreCase(pricingTypeStr);
+
+                                    if (isPerNight || isFirstDay) {
+                                        BigDecimal itemPrice = mapped.getPrice().multiply(BigDecimal.valueOf(reqAddOn.getQuantity()));
+                                        dailyAddOn = dailyAddOn.add(itemPrice);
+
+                                        // Tương tự, tính thuế gánh cả phí dịch vụ của Item
+                                        BigDecimal itemServiceFee = itemPrice.multiply(feePercent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                                        BigDecimal itemTaxableAmount = itemPrice.add(itemServiceFee);
+
+                                        BigDecimal itemTax = taxCalculatorService.calculateTax(
+                                                mapped.getCatalogItem().getTaxCategory().getId(),
+                                                itemTaxableAmount,
+                                                context.getDate()
+                                        );
+                                        dailyAddOnTax = dailyAddOnTax.add(itemTax);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    context.setAddOnAmount(dailyAddOn);
+                    context.setAddOnTaxAmount(dailyAddOnTax); // Đã tính xong thuế rất rạch ròi
                 },
 
-                // Step 6: VAT Calculation
+                // ==============================================================
+                // Step 5: Tính phí phục vụ (Service Fee)
+                // ==============================================================
                 context -> {
-                    BigDecimal subtotal = context.getDiscountedPrice().add(context.getSurchargeAmount());
-                    BigDecimal taxableAmount = subtotal.add(context.getServiceFeeAmount());
-                    BigDecimal vatPercent = taxCalculatorService.getTaxRate(context.getTaxCategory().getId(),
-                            context.getDate());
-                    BigDecimal taxAmount = taxableAmount.multiply(vatPercent)
+                    BigDecimal roomAndSurcharge = context.getDiscountedPrice().add(context.getSurchargeAmount());
+                    BigDecimal addOnAmount = context.getAddOnAmount();
+
+                    BigDecimal feePercent = context.getHotelRoomType().getHotel().getServiceFeePercent();
+                    if (feePercent == null) feePercent = BigDecimal.ZERO;
+
+                    // 1. Phí dịch vụ của riêng Phòng
+                    BigDecimal roomFee = roomAndSurcharge.multiply(feePercent)
                             .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-                    context.setTaxAmount(taxAmount);
-                    context.setFinalPrice(taxableAmount.add(taxAmount));
-                });
+
+                    // 2. Phí dịch vụ của khối Add-ons
+                    BigDecimal addOnFee = addOnAmount.multiply(feePercent)
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                    // 3. Cộng dồn để đảm bảo KHÔNG BAO GIỜ LỆCH so với gốc tính Thuế
+                    context.setServiceFeeAmount(roomFee.add(addOnFee));
+                },
+
+                // ==============================================================
+                // Step 6: Tính toán thuế VAT tổng và chốt giá Final
+                // ==============================================================
+                context -> {
+                    BigDecimal roomAndSurcharge = context.getDiscountedPrice().add(context.getSurchargeAmount());
+
+                    BigDecimal feePercent = context.getHotelRoomType().getHotel().getServiceFeePercent();
+                    if (feePercent == null) feePercent = BigDecimal.ZERO;
+
+                    // Tính lại đúng cục Phí Dịch Vụ của Phòng (Trùng khớp 100% với Step 5)
+                    BigDecimal roomServiceFee = roomAndSurcharge.multiply(feePercent)
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                    // Số tiền phòng chịu thuế = Tiền phòng + Phí dịch vụ của phòng
+                    BigDecimal roomTaxableAmount = roomAndSurcharge.add(roomServiceFee);
+
+                    // Tính Thuế Phòng bằng TaxCalculatorService siêu việt
+                    BigDecimal roomTax = taxCalculatorService.calculateTax(
+                            context.getTaxCategory().getId(),
+                            roomTaxableAmount,
+                            context.getDate()
+                    );
+
+                    // TỔNG THUẾ = Thuế Phòng + Thuế Add-ons (đã tính xong ở Step 4.5)
+                    BigDecimal totalTaxAmount = roomTax.add(context.getAddOnTaxAmount());
+                    context.setTaxAmount(totalTaxAmount);
+
+                    // TỔNG CỘNG FINAL: Cộng đúng 5 cục lại với nhau
+                    BigDecimal finalPrice = context.getDiscountedPrice()
+                            .add(context.getSurchargeAmount())
+                            .add(context.getAddOnAmount())
+                            .add(context.getServiceFeeAmount()) // Đã chuẩn toán học từ Step 5
+                            .add(totalTaxAmount);
+
+                    context.setFinalPrice(finalPrice);
+                }
+        );
     }
 }

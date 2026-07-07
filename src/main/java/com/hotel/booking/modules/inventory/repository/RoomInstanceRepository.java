@@ -90,4 +90,12 @@ public interface RoomInstanceRepository extends JpaRepository<RoomInstance, Inte
             @Param("checkIn") LocalDate checkIn,
             @Param("checkOut") LocalDate checkOut
     );
+
+    @Query("SELECT r " +
+            "FROM RoomInstance r " +
+            "JOIN FETCH r.hotelRoomType hrt " +
+            "JOIN FETCH hrt.roomType rt " +
+            "WHERE hrt.hotel.id = :hotelId " +
+            "ORDER BY hrt.id, r.roomNumber")
+    List<RoomInstance> findAllByHotelIdWithRoomType(@Param("hotelId") Integer hotelId);
 }

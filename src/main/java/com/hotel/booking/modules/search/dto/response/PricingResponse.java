@@ -51,6 +51,7 @@ public class PricingResponse {
         BigDecimal priceAdjustment;
         BigDecimal discountAmount;
         BigDecimal surchargeAmount;
+        BigDecimal addOnAmount;
         BigDecimal serviceFeeAmount;
         BigDecimal taxAmount;
         BigDecimal finalPrice;

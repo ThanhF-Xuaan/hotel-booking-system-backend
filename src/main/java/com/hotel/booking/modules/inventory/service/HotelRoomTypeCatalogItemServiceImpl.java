@@ -10,6 +10,8 @@ import com.hotel.booking.modules.inventory.entity.CatalogItem;
 import com.hotel.booking.modules.inventory.entity.HotelRoomType;
 import com.hotel.booking.modules.inventory.entity.HotelRoomTypeCatalogItem;
 import com.hotel.booking.modules.inventory.entity.HotelRoomTypeCatalogItemId;
+import com.hotel.booking.modules.inventory.enums.ItemType;
+import com.hotel.booking.modules.inventory.enums.PricingType;
 import com.hotel.booking.modules.inventory.repository.CatalogItemRepository;
 import com.hotel.booking.modules.inventory.repository.HotelRoomTypeCatalogItemRepository;
 import com.hotel.booking.modules.inventory.repository.HotelRoomTypeRepository;
@@ -20,10 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -107,10 +106,18 @@ public class HotelRoomTypeCatalogItemServiceImpl implements HotelRoomTypeCatalog
         for (CatalogItemSyncItemRequest reqItem : request.getItems()) {
             Integer reqItemId = reqItem.getCatalogItemId();
             HotelRoomTypeCatalogItem existing = existingMap.get(reqItemId);
+            Optional<CatalogItem> type = catalogItemRepository.findById(reqItemId);
+
 
             if (existing == null) {
-                // If requested item mapping is NOT in DB -> INSERT it
                 CatalogItem catalogItem = dbItemMap.get(reqItemId);
+
+                // Logic chữa cháy: Tự suy diễn pricing_type dựa trên loại sản phẩm (ItemType)
+                // Nếu là đồ ăn/uống (FOOD/DRINK) thì thường là PER_STAY, nếu là dịch vụ phòng thì PER_NIGHT
+                PricingType inferredPricingType = (catalogItem.getItemType() == ItemType.PRODUCT || catalogItem.getItemType() == ItemType.SERVICE)
+                        ? PricingType.PER_STAY
+                        : PricingType.PER_NIGHT;
+
                 HotelRoomTypeCatalogItemId id = new HotelRoomTypeCatalogItemId(hotelRoomTypeId, reqItemId);
                 HotelRoomTypeCatalogItem newMapping = HotelRoomTypeCatalogItem.builder()
                         .id(id)
@@ -118,6 +125,7 @@ public class HotelRoomTypeCatalogItemServiceImpl implements HotelRoomTypeCatalog
                         .catalogItem(catalogItem)
                         .itemUsage(reqItem.getItemUsage())
                         .price(reqItem.getPrice())
+                        .pricingType(inferredPricingType) // Gán cái loại đã suy diễn
                         .build();
                 toSave.add(newMapping);
             } else {

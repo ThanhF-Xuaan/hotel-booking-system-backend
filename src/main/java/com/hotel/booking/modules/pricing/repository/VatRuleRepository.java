@@ -31,5 +31,17 @@ public interface VatRuleRepository extends JpaRepository<VatRule, Integer> {
     List<VatRule> findActiveVatRules(
             @Param("taxCategoryId") Integer taxCategoryId,
             @Param("date") LocalDate date);
+
+    @Query("""
+    SELECT v FROM VatRule v 
+    WHERE v.taxCategory.id = :taxCategoryId 
+      AND v.status = 'ACTIVE' 
+      AND v.startDate <= :date 
+      AND (v.endDate IS NULL OR v.endDate >= :date)
+    """)
+    Optional<VatRule> findActiveRuleByTaxCategory(
+            @Param("taxCategoryId") Integer taxCategoryId,
+            @Param("date") LocalDate date
+    );
 }
 

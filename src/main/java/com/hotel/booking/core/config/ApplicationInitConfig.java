@@ -77,6 +77,47 @@ public class ApplicationInitConfig {
                 log.info("Manager user seeded successfully");
             }
             // Tiếp tục cho receptionist, housekeeping...
+            if (staffRepository.findByUsernameAndIsDeletedFalse("receptionist_hn").isEmpty()) {
+                var hotel = hotelRepository.findByNameAndIsDeletedFalse("Khách sạn Viettel Hà Nội")
+                        .orElse(null); // Hoặc throw exception nếu bắt buộc phải có hotel
+                var managerRole = roleRepository.findByCodeAndIsDeletedFalse("RECEPTIONIST")
+                        .orElseThrow();
+
+                Staff manager = Staff.builder()
+                        .username("receptionist_hn")
+                        .password(passwordEncoder.encode(staffPassword))
+                        .hotel(hotel)
+                        .role(managerRole)
+                        .firstName("Nguyễn")
+                        .lastName("Lễ Tân")
+                        .fullName("Nguyễn Lễ Tân (HN)")
+                        .status(ActiveStatus.ACTIVE)
+                        .isDeleted(false)
+                        .build();
+                staffRepository.save(manager);
+                log.info("Receptionist user seeded successfully");
+            }
+
+            if (staffRepository.findByUsernameAndIsDeletedFalse("housekeeping_hn").isEmpty()) {
+                var hotel = hotelRepository.findByNameAndIsDeletedFalse("Khách sạn Viettel Hà Nội")
+                        .orElse(null); // Hoặc throw exception nếu bắt buộc phải có hotel
+                var managerRole = roleRepository.findByCodeAndIsDeletedFalse("HOUSEKEEPING")
+                        .orElseThrow();
+
+                Staff manager = Staff.builder()
+                        .username("housekeeping_hn")
+                        .password(passwordEncoder.encode(staffPassword))
+                        .hotel(hotel)
+                        .role(managerRole)
+                        .firstName("Phạm")
+                        .lastName("Buồng Phòng")
+                        .fullName("Phạm Buồng Phòng (HN)")
+                        .status(ActiveStatus.ACTIVE)
+                        .isDeleted(false)
+                        .build();
+                staffRepository.save(manager);
+                log.info("Housekeeping user seeded successfully");
+            }
         };
     }
 }

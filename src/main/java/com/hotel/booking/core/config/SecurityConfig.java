@@ -39,7 +39,10 @@ public class SecurityConfig {
                         "/hotel/api/v1/inventory/hotels/**",
                         "/hotel/api/v1/inventory/room-types",
                         "/hotel/api/v1/inventory/hotel-room-types",
-                        "/hotel/api/v1/inventory/internal/jobs/**"
+                        "/hotel/api/v1/inventory/internal/jobs/**",
+                        "/hotel/api/v1/pos/**",
+                        "/hotel/api/v1/operation/**",
+                        "/hotel/api/v1/report/**"
         };
 
         @Value("${jwt.signerKey}")
@@ -80,7 +83,7 @@ public class SecurityConfig {
                                 "http://localhost",
                                 "http://localhost:80"));
 
-                configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                 configuration.setAllowedHeaders(List.of("*"));
                 configuration.setAllowCredentials(true);
 

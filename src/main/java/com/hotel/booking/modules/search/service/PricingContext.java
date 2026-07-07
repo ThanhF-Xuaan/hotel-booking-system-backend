@@ -6,6 +6,7 @@ import com.hotel.booking.modules.pricing.entity.PricingRule;
 import com.hotel.booking.modules.pricing.entity.SurchargeRule;
 import com.hotel.booking.modules.pricing.entity.TaxCategory;
 import com.hotel.booking.modules.search.dto.request.PricingRequest;
+import com.hotel.booking.modules.search.dto.request.RoomRequest;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -44,4 +45,6 @@ public class PricingContext {
     BigDecimal serviceFeeAmount;
     BigDecimal taxAmount;
     BigDecimal finalPrice;
+    BigDecimal addOnAmount;
+    BigDecimal addOnTaxAmount;
 }

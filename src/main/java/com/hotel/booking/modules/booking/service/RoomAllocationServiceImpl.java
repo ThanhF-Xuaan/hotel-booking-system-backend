@@ -68,6 +68,7 @@ public class RoomAllocationServiceImpl implements RoomAllocationService{
                     .roomTypeName(detail.getRoomTypeName())
                     .requiredQuantity((int) detail.getQuantity())
                     .physicalRooms(physicalRooms)
+                    .bookingDetailId(detail.getId())
                     .build());
         }
 

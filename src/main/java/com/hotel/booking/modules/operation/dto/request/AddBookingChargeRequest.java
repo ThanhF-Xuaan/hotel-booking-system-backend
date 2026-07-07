@@ -11,14 +11,20 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class AddChargeRequest {
-    private Long bookingDetailId;
-    private Long bookingGuestId;  // (Optional) Ai là người gọi dịch vụ
-    private Integer catalogItemId; // (Optional) Nếu là món ăn/dịch vụ từ Catalog
-    private String chargeType;    // CATALOG_ITEM, EXTRA_PERSON, EARLY_CHECKIN, OTHER
-    private String itemName;
-    private String description;
-    private Integer quantity;
-    private BigDecimal unitPrice;
-    private BigDecimal vatRate;
+public class AddBookingChargeRequest {
+    Long bookingDetailId;
+    Long bookingGuestId;  // (Optional) Ai là người gọi dịch vụ
+
+    Integer catalogItemId; // BỔ SUNG: Dùng để xác định dịch vụ (Thuê xe, Giặt là...)
+
+    String chargeType;    // EXTRA_PERSON, EARLY_CHECKIN, OTHER
+
+    String guestType;
+
+    String itemName;
+    String description;
+    Integer quantity;
+
+    BigDecimal unitPrice;
+    BigDecimal vatRate;
 }

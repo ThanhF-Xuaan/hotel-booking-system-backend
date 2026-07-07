@@ -28,6 +28,7 @@ public class RoomSelectionUIResponse {
         String roomTypeName;
         Integer requiredQuantity;
         List<PhysicalRoom> physicalRooms;
+        Long bookingDetailId;
     }
 
     @Data

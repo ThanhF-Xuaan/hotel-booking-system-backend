@@ -43,4 +43,15 @@ public class TaxCalculatorServiceImpl implements TaxCalculatorService {
         // Take the first active rule (ordered by startDate DESC)
         return activeRules.get(0).getVatPercent();
     }
+
+    @Override
+    public BigDecimal calculateCompoundPrice(BigDecimal basePrice, BigDecimal serviceFeeRate, BigDecimal vatRate) {
+        // Cộng 1 vào rate (vd: 5% -> 1.05)
+        BigDecimal serviceFeeMultiplier = BigDecimal.ONE.add(serviceFeeRate.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+        BigDecimal vatMultiplier = BigDecimal.ONE.add(vatRate.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+
+        // Nhân dồn: Base * ServiceFeeMultiplier * VatMultiplier
+        return basePrice.multiply(serviceFeeMultiplier).multiply(vatMultiplier)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
 }

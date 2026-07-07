@@ -2,15 +2,7 @@ package com.hotel.booking.modules.booking.entity;
 
 import com.hotel.booking.core.entity.BaseEntity;
 import com.hotel.booking.modules.inventory.entity.HotelRoomType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,6 +14,8 @@ import lombok.experimental.FieldDefaults;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "booking_details")
@@ -50,6 +44,15 @@ public class BookingDetail extends BaseEntity {
 
     @Column(name = "quantity", nullable = false)
     Short quantity;
+
+    @Column(name = "adult_count", nullable = false)
+    Short adultCount;
+
+    @Column(name = "child_count", nullable = false)
+    Short childCount; // ĐỔI TỪ childrenCount THÀNH childCount
+
+    @Column(name = "infant_count", nullable = false)
+    Short infantCount;
 
     @Column(name = "guest_count", nullable = false)
     Short guestCount;
@@ -83,4 +86,7 @@ public class BookingDetail extends BaseEntity {
 
     @Column(name = "final_amount", nullable = false, precision = 15, scale = 2)
     BigDecimal finalAmount;
+
+    @OneToMany(mappedBy = "bookingDetail", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    List<BookingGuest> bookingGuests = new ArrayList<>();
 }

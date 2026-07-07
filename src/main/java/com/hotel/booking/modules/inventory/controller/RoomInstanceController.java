@@ -61,16 +61,6 @@ public class RoomInstanceController {
                 .build();
     }
 
-    @PutMapping("/{id}/status")
-    @Operation(summary = "Cập nhật trạng thái phòng vật lý", description = "Cập nhật trạng thái hiện tại của một phòng vật lý (READY, OCCUPIED, CLEANING, MAINTENANCE).")
-    public ApiResponse<RoomInstanceResponse> updateRoomInstanceStatus(
-            @PathVariable Integer id,
-            @Valid @RequestBody RoomInstanceStatusUpdateRequest request) {
-        return ApiResponse.<RoomInstanceResponse>builder()
-                .result(roomInstanceService.updateRoomInstanceStatus(id, request))
-                .build();
-    }
-
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa mềm phòng vật lý", description = "Thực hiện xóa mềm phòng vật lý bằng cách đánh dấu isDeleted = true.")
     public ApiResponse<Void> deleteRoomInstance(@PathVariable Integer id) {

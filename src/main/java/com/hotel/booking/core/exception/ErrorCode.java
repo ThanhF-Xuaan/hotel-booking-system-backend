@@ -291,13 +291,41 @@ public enum ErrorCode {
         ROOM_CHILD_CAPACITY_EXCEEDED(9005, "Số lượng trẻ em vượt quá quy định", HttpStatus.BAD_REQUEST),
         ROOM_INFANT_CAPACITY_EXCEEDED(9006, "Số lượng em bé vượt quá quy định", HttpStatus.BAD_REQUEST),
 
-        BOOKING_NOT_FOUND(9100, "Booking not found", HttpStatus.BAD_REQUEST),
+        BOOKING_NOT_FOUND(9100, "Booking not found", HttpStatus.NOT_FOUND),
         ROOM_ALREADY_BLOCKED(9101, "Phòng vừa được người khác chọn, vui lòng chọn phòng khác", HttpStatus.BAD_REQUEST),
         ROOM_NOT_BLOCKED(9102, "Phòng chưa được giữ chỗ (BLOCKED), không thể xác nhận", HttpStatus.BAD_REQUEST),
         INVALID_ROOM_STATUS(9103, "Trạng thái phòng không hợp lệ để xác nhận", HttpStatus.BAD_REQUEST),
         ROOM_QUANTITY_EXCEEDED(9104, "Bạn đã chọn đủ số lượng phòng của đơn này", HttpStatus.BAD_REQUEST),
         ROOM_TYPE_MISMATCH(9105, "Phòng được chọn không khớp với loại phòng đã đặt", HttpStatus.BAD_REQUEST),
         ROOM_ALREADY_CONFIRMED(9106, "Phòng đã được chốt cứng, không thể thay đổi", HttpStatus.BAD_REQUEST),
+        INVALID_BOOKING_STATUS(9107, "Trạng thái booking không phải confirm", HttpStatus.BAD_REQUEST),
+        BOOKING_DETAIL_NOT_FOUND(9108, "Booking chi tiết không tồn tại", HttpStatus.NOT_FOUND),
+        INVOICE_NOT_FOUND(9109, "Hoá đơn không tồn tại", HttpStatus.NOT_FOUND),
+        ROOM_NOT_FULLY_ASSIGNED(9110, "Số lượng phòng chưa được gán đủ", HttpStatus.BAD_REQUEST),
+        ROOM_GUEST_DECLARATION_NOT_EMPTY(9111, "Danh sách khai báo phòng không được để trống", HttpStatus.BAD_REQUEST),
+        GUEST_INFO_NOT_EMPTY(9112, "Phải có ít nhất 1 khách lưu trú trong phòng", HttpStatus.BAD_REQUEST),
+        GUEST_FULL_NAME_NOT_BLANK(9113, "Tên khách không được để trống", HttpStatus.BAD_REQUEST),
+
+        MISSING_GUEST_DECLARATION(9114, "Vui lòng khai báo đầy đủ danh sách khách lưu trú thực tế (Tên, CMND/Passport) cho từng phòng.", HttpStatus.BAD_REQUEST),
+        GUEST_COUNT_EXCEEDED(9115, "Số lượng khách lưu trú vượt quá giới hạn đã thanh toán. Vui lòng thêm phụ phí người thứ 3 (Extra Person) trước khi Check-in.", HttpStatus.BAD_REQUEST),
+        GUEST_TYPE_MISMATCH(9116, "Thành phần người lớn/trẻ em không khớp với thông tin đã đặt. Vui lòng kiểm tra lại hoặc thêm phụ thu chênh lệch độ tuổi.", HttpStatus.BAD_REQUEST),
+
+        ADULT_MISSING_IDENTITY(9117, "Khách người lớn bắt buộc phải cung cấp Loại giấy tờ và Số giấy tờ tùy thân để khai báo lưu trú.", HttpStatus.BAD_REQUEST),
+
+        OOM_INSTANCE_ID_NOT_NULL(9201, "Room instance ID must not be null", HttpStatus.BAD_REQUEST),
+        ORDER_ITEM_NOT_EMPTY(9202, "Order items list must not be empty", HttpStatus.BAD_REQUEST),
+        CATALOG_ITEM_ID_NOT_NULL(9203, "Catalog item ID must not be null", HttpStatus.BAD_REQUEST),
+        MIN_ORDER_ITEM_QUANTITY(9204, "Order item quantity must be at least 1", HttpStatus.BAD_REQUEST),
+        BOOKING_UNPAID_BALANCE(9205, "Khách hàng chưa thanh toán chi phí phát sinh trong thời gian lưu trú", HttpStatus.BAD_REQUEST),
+        ROOM_MUST_BE_CLEANED_FIRST(9206, "Phòng chưa được dọn dẹp", HttpStatus.BAD_REQUEST),
+        ROOM_MAINTENANCE_MUST_CLEAN(9207, "Phòng vừa được bảo trì hoàn tất, chưa được dọn dẹp", HttpStatus.BAD_REQUEST),
+        ROOM_SLOT_NOT_AVAILABLE(9208,  "Không tìm thấy dữ liệu slot cho phòng đã chọn trong thời gian lưu trú.", HttpStatus.BAD_REQUEST),
+        ROOM_ALREADY_TAKEN(9209, "Phòng này đã bị người khác đặt hoặc đang trong trạng thái không sẵn sàng.", HttpStatus.CONFLICT),
+        INSUFFICIENT_PAYMENT(9210, "Số tiền thanh toán chưa đủ", HttpStatus.BAD_REQUEST),
+
+        // Lỗi liên quan đến Tồn kho (Availability)
+        OUT_OF_INVENTORY(9210, "Hạng phòng này đã hết số lượng phòng trống cho các ngày bạn đã chọn.", HttpStatus.CONFLICT),
+        INVALID_WALKIN_DATE(9211, "Ngày walk-in đang ở tuong lai, không hợp lệ", HttpStatus.BAD_REQUEST),
         ;
 
         ErrorCode(int code, String message, HttpStatusCode statusCode) {

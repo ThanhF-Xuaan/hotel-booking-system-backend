@@ -2,6 +2,7 @@ package com.hotel.booking.modules.booking.entity;
 
 import com.hotel.booking.modules.crm.entity.Guest;
 import com.hotel.booking.modules.crm.enums.GuestType;
+import com.hotel.booking.modules.crm.enums.IdentityType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -56,6 +57,13 @@ public class BookingGuest {
     @Enumerated(EnumType.STRING)
     @Column(name = "guest_type", nullable = false, length = 20)
     GuestType guestType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "identity_type", length = 20)
+    IdentityType identityType;
+
+    @Column(name = "identity_number", length = 50)
+    String identityNumber;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

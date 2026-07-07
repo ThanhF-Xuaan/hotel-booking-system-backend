@@ -2,9 +2,9 @@ package com.hotel.booking.modules.inventory.repository;
 
 import com.hotel.booking.core.enums.ActiveStatus;
 import com.hotel.booking.modules.inventory.entity.RoomAvailability;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -63,4 +63,19 @@ public interface RoomAvailabilityRepository extends JpaRepository<RoomAvailabili
     int resetExpiredLocks(@Param("now") OffsetDateTime now);
 
     List<RoomAvailability> findByHotelRoomTypeId(int typeId);
+
+
+    List<RoomAvailability> findByHotelRoomTypeIdAndDateIn(Integer hotelRoomTypeId,
+                                                          List<LocalDate> dates);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000")})
+    @Query("SELECT ra FROM RoomAvailability ra " +
+            "WHERE ra.hotelRoomType.id = :hotelRoomTypeId " +
+            "AND ra.date >= :checkInDate " +
+            "AND ra.date < :checkOutDate")
+    List<RoomAvailability> findAvailabilityForUpdate(
+            @Param("hotelRoomTypeId") Integer hotelRoomTypeId,
+            @Param("checkInDate") LocalDate checkInDate,
+            @Param("checkOutDate") LocalDate checkOutDate);
 }

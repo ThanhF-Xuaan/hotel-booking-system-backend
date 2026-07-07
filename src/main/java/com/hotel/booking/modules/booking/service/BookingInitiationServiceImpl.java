@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hotel.booking.core.exception.AppException;
 import com.hotel.booking.core.exception.ErrorCode;
 import com.hotel.booking.modules.booking.dto.request.InitiateBookingRequest;
+import com.hotel.booking.modules.inventory.entity.HotelRoomType;
+import com.hotel.booking.modules.inventory.entity.HotelRoomTypeCatalogItem;
 import com.hotel.booking.modules.inventory.entity.RoomAvailability;
+import com.hotel.booking.modules.inventory.enums.ItemUsage;
+import com.hotel.booking.modules.inventory.repository.HotelRoomTypeCatalogItemRepository;
 import com.hotel.booking.modules.inventory.repository.RoomAvailabilityRepository;
 import com.hotel.booking.modules.inventory.service.RoomAvailabilityService;
 import lombok.AccessLevel;
@@ -31,6 +35,7 @@ public class BookingInitiationServiceImpl implements BookingInitiationService{
     StringRedisTemplate redisTemplate;
     ObjectMapper objectMapper;
     RoomAvailabilityService roomAvailabilityService;
+    HotelRoomTypeCatalogItemRepository mappingRepository;
 
     @Override
     @Transactional
@@ -39,14 +44,16 @@ public class BookingInitiationServiceImpl implements BookingInitiationService{
 
         OffsetDateTime expiration = OffsetDateTime.now().plusMinutes(15);
 
-        //Re-validation
-        for(InitiateBookingRequest.RoomSelection room : request.getRooms()){
+        // 1. Re-validation Inventory & Add-ons
+        for (InitiateBookingRequest.RoomSelection room : request.getRooms()) {
+
+            // --- A. KIỂM TRA PHÒNG TRỐNG (Code cũ của bạn giữ nguyên) ---
             List<RoomAvailability> availabilities = roomAvailabilityRepository
                     .findByHotelRoomTypeIdAndDateBetween(
-                        room.getHotelRoomTypeId(),
-                        request.getCheckIn(),
-                        request.getCheckOut().minusDays(1)
-            );
+                            room.getHotelRoomTypeId(),
+                            request.getCheckIn(),
+                            request.getCheckOut().minusDays(1)
+                    );
 
             if(availabilities.isEmpty()){
                 throw new AppException(ErrorCode.ROOM_AVAILABILITY_NOT_FOUND);
@@ -60,26 +67,39 @@ public class BookingInitiationServiceImpl implements BookingInitiationService{
                             room.getHotelRoomTypeId(), availability.getDate(), availableCount, room.getQuantity());
                     throw new AppException(ErrorCode.ROOM_NOT_ENOUGH_QUANTITY);
                 }
-
                 availability.setLockedRooms(availability.getLockedRooms() + room.getQuantity());
                 availability.setLockedUntil(expiration);
             }
-
-
             roomAvailabilityRepository.saveAll(availabilities);
+
+            // --- B. BỔ SUNG MỚI: KIỂM TRA BẢO MẬT ADD-ONS ---
+            if (room.getAddOns() != null && !room.getAddOns().isEmpty()) {
+                for (InitiateBookingRequest.SelectedAddOn addOn : room.getAddOns()) {
+                    // Check xem CatalogItem này có được map với HotelRoomType này không, và phải là OPTIONAL
+                    boolean isValidAddOn = mappingRepository.existsByHotelRoomTypeIdAndCatalogItemIdAndItemUsage(
+                            room.getHotelRoomTypeId(),
+                            addOn.getCatalogItemId(),
+                            ItemUsage.OPTIONAL
+                    );
+
+                    if (!isValidAddOn) {
+                        log.error("Add-on không hợp lệ hoặc không được phép mua kèm: CatalogItem {}", addOn.getCatalogItemId());
+                        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // Bạn có thể tạo mã lỗi INVALID_ADD_ON
+                    }
+                }
+            }
         }
 
+        // 2. Lưu vào Redis
         String sessionId = UUID.randomUUID().toString();
         String dataKey = "payment:data:" + sessionId;
         String expireKey = "payment:expire:" + sessionId;
 
         try {
+            // Json lúc này sẽ chứa cả danh sách addOns khách chọn
             String bookingDraftJson = objectMapper.writeValueAsString(request);
-
             redisTemplate.opsForValue().set(dataKey, bookingDraftJson, 15, TimeUnit.MINUTES);
-
             redisTemplate.opsForValue().set(expireKey, "dummy_value", 10, TimeUnit.MINUTES);
-
             log.info("Khởi tạo Session [{}] thành công trên Redis (TTL 10 mins).", sessionId);
 
         } catch (JsonProcessingException e) {

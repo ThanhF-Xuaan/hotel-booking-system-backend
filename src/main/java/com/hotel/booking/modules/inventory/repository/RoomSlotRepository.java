@@ -31,7 +31,7 @@ public interface RoomSlotRepository extends JpaRepository<RoomSlot, Long> {
         WHERE rs.roomInstance.id = :roomInstanceId 
           AND rs.slotDate >= :checkIn 
           AND rs.slotDate < :checkOut
-          AND rs.status != READY
+          AND rs.status != com.hotel.booking.modules.inventory.enums.RoomSlotStatus.READY
     """)
     boolean existsConflictingSlots(
             @Param("roomInstanceId") Integer roomInstanceId,
@@ -100,5 +100,52 @@ public interface RoomSlotRepository extends JpaRepository<RoomSlot, Long> {
     List<RoomSlot> findByBookingDetailIdAndStatus(
             @Param("bookingDetailId") Long bookingDetailId,
             @Param("status") RoomSlotStatus status
+    );
+
+    List<RoomSlot> findByBookingDetailId(Long bookingDetailId);
+
+    List<RoomSlot> findByRoomInstanceIdAndBookingDetailId(Integer roomInstanceId,
+                                                          Long bookingDetailId);
+
+    List<RoomSlot> findByRoomInstanceIdAndSlotDateBetween(Integer roomInstanceId,
+                                                          LocalDate startDate,
+                                                          LocalDate endDate);
+
+    // Tìm các slot của 1 phòng từ ngày hôm nay trở đi đang có status cụ thể
+    List<RoomSlot> findByRoomInstanceIdAndStatusAndSlotDateGreaterThanEqualOrderBySlotDateAsc(Integer roomInstanceId,
+                                                                            RoomSlotStatus status,
+                                                                            LocalDate date);
+
+    // Lấy các slot, JOIN FETCH luôn BookingDetail và Booking để lấy thông tin khách
+    @Query("SELECT rs, b.id, b.status, g.fullName FROM RoomSlot rs " +
+            "LEFT JOIN rs.bookingDetail bd " +
+            "LEFT JOIN bd.booking b " +
+            "LEFT JOIN b.guest g " +
+            "WHERE rs.roomInstance.id IN :roomInstanceIds " +
+            "AND rs.slotDate BETWEEN :startDate AND :endDate")
+    List<Object[]> findTimelineSlotsRaw(
+            @Param("roomInstanceIds") List<Integer> roomInstanceIds,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000")}) // Timeout 3s để chống Deadlock
+    @Query("SELECT rs FROM RoomSlot rs " +
+            "WHERE rs.roomInstance.id = :roomInstanceId " +
+            "AND rs.slotDate >= :checkInDate " +
+            "AND rs.slotDate < :checkOutDate")
+    List<RoomSlot> findSlotsForUpdate(
+            @Param("roomInstanceId") Integer roomInstanceId,
+            @Param("checkInDate") LocalDate checkInDate,
+            @Param("checkOutDate") LocalDate checkOutDate);
+
+    List<RoomSlot> findByRoomInstanceIdAndStatusAndSlotDateBetween(
+            Integer roomInstanceId, RoomSlotStatus status, LocalDate start, LocalDate end);
+
+    List<RoomSlot> findByRoomInstanceIdAndStatusInAndSlotDateBetween(
+            Integer roomInstanceId,
+            List<RoomSlotStatus> statuses,
+            LocalDate startDate,
+            LocalDate endDate
     );
 }

@@ -2,6 +2,7 @@ package com.hotel.booking.modules.inventory.entity;
 
 import com.hotel.booking.core.entity.BaseEntity;
 import com.hotel.booking.modules.inventory.enums.ItemUsage;
+import com.hotel.booking.modules.inventory.enums.PricingType;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -48,6 +49,10 @@ public class HotelRoomTypeCatalogItem extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "item_usage", nullable = false, length = 20)
     ItemUsage itemUsage;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pricing_type", nullable = false, length = 20)
+    PricingType pricingType;
 
     @Column(name = "price", nullable = false, precision = 15, scale = 2)
     BigDecimal price;
