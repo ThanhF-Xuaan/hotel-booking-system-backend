@@ -61,4 +61,6 @@ Thumbs.db
 ### Uploads/Data cục bộ (Tránh đẩy ảnh test lên Git) ###
 uploads/
 !uploads/.gitkeep
+
 .agents/
+docs/

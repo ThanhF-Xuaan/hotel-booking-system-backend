@@ -1,33 +1,22 @@
-server:
-  port: 8080
-
 spring:
   application:
     name: hotel-booking-system
+  profiles:
+    active: dev
 
-  # C?u h�nh Database
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/hotel_db}
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:123456}
-    driver-class-name: org.postgresql.Driver
+server:
+  port: 8080
 
-  # C?u h�nh Hibernate (JPA)
-  jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: none
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+jwt:
+  signerKey: ${JWT_SECRET:8e18c9e3f2cab32b039df13a3c1ee6def879acad674f279daba9066d6dd62e5a}
+  expiration: ${JWT_EXPIRATION_MS:86400000}
 
-  # C?u h�nh Redis
-  data:
-    redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
+# CẤU HÌNH LOGGING ĐỂ DEBUG
+logging:
+  level:
+    root: INFO
+    # Log chi tiết quá trình xác thực của Spring Security
+    org.springframework: INFO
 
-app:
-  upload:
-    dir: ${UPLOAD_DIR:./uploads}
+    # Log chi tiết các class của bạn (Thay 'com.hotel.booking' bằng package của bạn)
+    com.hotel.booking: DEBUG
