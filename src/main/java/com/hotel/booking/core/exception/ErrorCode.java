@@ -326,6 +326,16 @@ public enum ErrorCode {
         // Lỗi liên quan đến Tồn kho (Availability)
         OUT_OF_INVENTORY(9210, "Hạng phòng này đã hết số lượng phòng trống cho các ngày bạn đã chọn.", HttpStatus.CONFLICT),
         INVALID_WALKIN_DATE(9211, "Ngày walk-in đang ở tuong lai, không hợp lệ", HttpStatus.BAD_REQUEST),
+        PACKAGE_ITEM_MANUAL_ADD_NOT_ALLOWED(9212, "Không thể thêm gói dịch vụ mặc định (Package Item) thủ công tại quầy. Vui lòng sử dụng loại Dịch vụ gọi thêm (Extra Service).", HttpStatus.BAD_REQUEST),
+        ACTIVE_SURCHARGE_RULE_NOT_FOUND(9213, "Không tìm thấy quy tắc phụ thu nào đang hoạt động cho loại phí này. Vui lòng kiểm tra lại cấu hình giá!",HttpStatus.NOT_FOUND),
+        MISSING_GUEST_TYPE_FOR_SURCHARGE(9214, "Vui lòng chọn loại khách (Người lớn/Trẻ em) để tính phí phụ thu.", HttpStatus.BAD_REQUEST),
+        GUEST_TYPE_SURCHARGE_POLICY_NOT_FOUND(9215, "Hạng phòng này chưa được cấu hình chính sách phụ thu cho đối tượng khách được chọn.", HttpStatus.NOT_FOUND),
+        MISSING_EXTRA_GUEST_IDENTITY_INFO(9216, "Bắt buộc nhập Họ tên và Loại giấy tờ tùy thân của khách mới để khai báo lưu trú.", HttpStatus.BAD_REQUEST),
+        INVALID_SURCHARGE_TIME_TIER_CONFIG(9217, "Lỗi cấu hình hệ thống: Không tìm thấy mảng cấu hình đa mức thời gian (Time Tiers) cho quy tắc này.", HttpStatus.BAD_REQUEST),
+        NO_MATCHING_TIME_TIER_FOUND(9218, "Không tìm thấy khung phạt thời gian phù hợp với số giờ chênh lệch của khách.", HttpStatus.BAD_REQUEST),
+        MISSING_MANUAL_CHARGE_AMOUNT(9219, "Bắt buộc nhập Đơn giá và Thuế suất (VAT) đối với các khoản phí phát sinh thủ công.", HttpStatus.BAD_REQUEST),
+        INVALID_CHARGE_TYPE_FOR_INVOICE(9220, "Loại phụ phí không hợp lệ, không thể ghi nhận vào hóa đơn.", HttpStatus.BAD_REQUEST),
+
         ;
 
         ErrorCode(int code, String message, HttpStatusCode statusCode) {

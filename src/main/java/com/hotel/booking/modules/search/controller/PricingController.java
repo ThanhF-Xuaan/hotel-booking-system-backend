@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/hotel/api/v1/search")
+@RequestMapping("/api/v1/search")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Search - Search Pricing Engine", description = "Các API tính toán báo giá phòng nghỉ")

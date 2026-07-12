@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
+
 @Getter
 @Setter
 @Builder
@@ -21,6 +23,6 @@ import lombok.experimental.FieldDefaults;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SurchargeCondition {
 
-    @JsonProperty("min_hours")
-    Double minHours;
+    @JsonProperty("time_tiers")
+    List<TimeTier> timeTiers;
 }

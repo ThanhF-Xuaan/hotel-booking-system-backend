@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/hotel/api/v1/pricing/vat-rules")
+@RequestMapping("/api/v1/pricing/vat-rules")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Pricing - Vat Rule Management", description = "Các API quản lý Cấu hình thuế (VatRule)")

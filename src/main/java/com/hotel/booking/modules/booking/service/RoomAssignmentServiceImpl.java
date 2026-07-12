@@ -67,7 +67,6 @@ public class RoomAssignmentServiceImpl implements RoomAssignmentService{
         }
 
         // 2. Kích hoạt PESSIMISTIC WRITE lên phòng mới
-        // Các request khác cố gắng chọn phòng này sẽ phải xếp hàng chờ
         RoomInstance newRoom = roomInstanceRepository.findByIdWithPessimisticLock(request.getNewRoomInstanceId())
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
 
@@ -79,7 +78,7 @@ public class RoomAssignmentServiceImpl implements RoomAssignmentService{
             throw new AppException(ErrorCode.ROOM_TYPE_MISMATCH);
         }
 
-        // 3. Kiểm tra đụng độ (Tránh người khác vừa hớt tay trên)
+        // 3. Kiểm tra đụng độ
         boolean hasConflict = roomSlotRepository.existsConflictingSlots(
                 newRoom.getId(),
                 detail.getCheckInDate(),
@@ -88,7 +87,6 @@ public class RoomAssignmentServiceImpl implements RoomAssignmentService{
 
         if (hasConflict) {
             log.warn("Phòng {} đã bị vướng lịch từ {} đến {}", newRoom.getRoomNumber(), detail.getCheckInDate(), detail.getCheckOutDate());
-            // Vì có @Transactional, nếu quăng Exception ở đây, việc nhả phòng cũ (nếu có) cũng sẽ bị ROLLBACK
             throw new AppException(ErrorCode.ROOM_ALREADY_BLOCKED);
         }
 
@@ -97,7 +95,7 @@ public class RoomAssignmentServiceImpl implements RoomAssignmentService{
                 newRoom.getId(), detail.getCheckInDate(), detail.getCheckOutDate()
         );
 
-        // Chuyển List thành Map theo SlotDate để tra cứu cho nhanh
+        // Chuyển List thành Map theo SlotDate để tra cứu
         Map<LocalDate, RoomSlot> existingSlotMap = existingSlots.stream()
                 .collect(Collectors.toMap(RoomSlot::getSlotDate, slot -> slot));
 
@@ -123,7 +121,6 @@ public class RoomAssignmentServiceImpl implements RoomAssignmentService{
                 slot.setBookingDetail(detail);
                 slot.setStatus(RoomSlotStatus.BLOCKED);
                 slot.setLockedAt(now);
-                // Reset lại reservedAt nếu dòng cũ bị dính tàn dư
                 slot.setReservedAt(null);
             }
 

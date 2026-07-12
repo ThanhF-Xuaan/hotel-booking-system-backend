@@ -9,7 +9,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("hotel/api/v1/booking/{bookingId}/payments")
+@RequestMapping("/api/v1/booking/{bookingId}/payments")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PaymentController {

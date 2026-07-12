@@ -23,8 +23,10 @@ import com.hotel.booking.modules.operation.dto.response.WalkInRoomSummaryRespons
 import com.hotel.booking.modules.pos.entity.ServiceOrder;
 import com.hotel.booking.modules.pos.repository.ServiceOrderRepository;
 import com.hotel.booking.modules.pricing.entity.SurchargeRule;
+import com.hotel.booking.modules.pricing.entity.TaxCategory;
 import com.hotel.booking.modules.pricing.enums.AdjustmentType;
 import com.hotel.booking.modules.pricing.repository.SurchargeRuleRepository;
+import com.hotel.booking.modules.pricing.repository.TaxCategoryRepository;
 import com.hotel.booking.modules.pricing.service.TaxCalculatorService;
 import com.hotel.booking.modules.search.dto.request.PricingRequest;
 import com.hotel.booking.modules.search.dto.request.RoomOccupancy;
@@ -67,18 +69,14 @@ public class FrontDeskServiceImpl implements FrontDeskService {
     GuestRepository guestRepository;
     HotelRoomTypeCatalogItemRepository hotelRoomTypeCatalogItemRepository;
     SurchargeRuleRepository surchargeRuleRepository;
-    ServiceOrderRepository serviceOrderRepository;
     PaymentRepository paymentRepository;
     HotelRepository hotelRepository;
 
     PriceAggregationService priceAggregationService;
     BookingFinancialService bookingFinancialService;
     InvoiceService invoiceService;
+    TaxCategoryRepository taxCategoryRepository;
 
-    EntityManager entityManager;
-
-
-    PaymentService paymentService;
 
     // =========================================================================
     // BƯỚC 17: CHECK-IN
@@ -107,7 +105,7 @@ public class FrontDeskServiceImpl implements FrontDeskService {
 
         for (BookingDetail detail : booking.getBookingDetails()) {
 
-            // 1. [CHỐT CHẶN]: Kiểm tra đã gán đủ phòng vật lý chưa (Fix CI-05)
+            // 1.Kiểm tra đã gán đủ phòng vật lý chưa
             long assignedRooms = bookingRoomRepository.countByBookingDetailId(detail.getId());
             if (assignedRooms < detail.getQuantity()) {
                 log.error("Thiếu phòng vật lý cho Detail {}. Yêu cầu: {}, Đã gán: {}", detail.getId(), detail.getQuantity(), assignedRooms);
@@ -195,7 +193,7 @@ public class FrontDeskServiceImpl implements FrontDeskService {
 
         // Chặn không cho gọi PACKAGE_ITEM qua API này (Bảo vệ luồng)
         if (ChargeType.PACKAGE_ITEM.equals(type)) {
-            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // "Không thể thêm gói mặc định tại quầy"
+            throw new AppException(ErrorCode.PACKAGE_ITEM_MANUAL_ADD_NOT_ALLOWED); // "Không thể thêm gói mặc định tại quầy"
         }
 
         // 2. Khởi tạo các biến chứa kết quả
@@ -211,7 +209,7 @@ public class FrontDeskServiceImpl implements FrontDeskService {
 
             // NHÓM 1: DỊCH VỤ MENU (Lấy từ Database Catalog/Mapping)
             case EXTRA_SERVICE:
-                if (request.getCatalogItemId() == null) throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+                if (request.getCatalogItemId() == null) throw new AppException(ErrorCode.CATALOG_ITEM_ID_NOT_NULL);
 
                 catalogItem = catalogItemRepository.findById(request.getCatalogItemId())
                         .orElseThrow(() -> new AppException(ErrorCode.CATALOG_ITEM_NOT_FOUND));
@@ -224,66 +222,158 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                 unitPrice = mappedItem.isPresent() ? mappedItem.get().getPrice() : catalogItem.getBasePrice();
                 break;
 
-            // NHÓM 2: PHỤ THU QUY ĐỊNH (Lấy từ Surcharge Rules)
-            case EARLY_CHECKIN:
-            case LATE_CHECKOUT:
+            // NHÓM 2: PHỤ THU QUY ĐỊNH (Lấy từ Surcharge Rules - Hỗ trợ Đa mức JSONB)
             case EXTRA_PERSON:
             case EXTRA_BED:
+            case EARLY_CHECKIN:
+            case LATE_CHECKOUT:
 
                 // 1. Lấy toàn bộ rule đang kích hoạt của Hạng phòng này
                 List<SurchargeRule> rules = surchargeRuleRepository.findAllByHotelRoomTypeIdAndIsDeletedFalse(detail.getHotelRoomType().getId());
 
-                // 2. Lọc ra các Rule đang có hiệu lực theo thời gian và đúng Loại phụ thu (Enum)
+                // 2. Lọc ra các Rule trùng loại và đang trong kỳ hạn hiệu lực
                 List<SurchargeRule> matchingRules = rules.stream()
-                        .filter(r -> r.getStatus() == ActiveStatus.ACTIVE // Sửa thành so sánh Enum
+                        .filter(r -> r.getStatus() == ActiveStatus.ACTIVE
                                 && r.getRuleType().name().equals(type.name())
-                                && !LocalDate.now().isBefore(r.getStartDate())
-                                && !LocalDate.now().isAfter(r.getEndDate()))
+                                && (r.getStartDate() == null || !LocalDate.now().isBefore(r.getStartDate()))
+                                && (r.getEndDate() == null || !LocalDate.now().isAfter(r.getEndDate())))
                         .toList();
 
                 if (matchingRules.isEmpty()) {
-                    throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // Mã lỗi: Không có cấu hình phụ thu
+                    throw new AppException(ErrorCode.ACTIVE_SURCHARGE_RULE_NOT_FOUND); // "Không có cấu hình phụ thu cho loại này!"
                 }
 
                 SurchargeRule activeRule = null;
 
-                // 3. Xử lý riêng biệt cho EXTRA_PERSON (Phải dựa vào Độ tuổi)
+                // ==========================================
+                // THÀNH PHẦN A: XỬ LÝ PHỤ THU NGƯỜI NGOÀI (EXTRA_PERSON)
+                // ==========================================
                 if (ChargeType.EXTRA_PERSON.equals(type)) {
                     if (request.getGuestType() == null || request.getGuestType().isBlank()) {
-                        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // Báo lỗi: Vui lòng chọn loại khách (Người lớn/Trẻ em)
+                        throw new AppException(ErrorCode.MISSING_GUEST_TYPE_FOR_SURCHARGE);
                     }
 
-                    // Tìm rule có AgePolicy khớp với GuestType gửi lên
                     activeRule = matchingRules.stream()
                             .filter(r -> r.getAgePolicy() != null
-                                    && request.getGuestType().equalsIgnoreCase(r.getAgePolicy().getGuestType()))
+                                    && request.getGuestType().equalsIgnoreCase(r.getAgePolicy().getGuestType().toString()))
                             .findFirst()
-                            .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION)); // Lỗi: Khách sạn chưa cấu hình phí ghép cho đối tượng này!
+                            .orElseThrow(() -> new AppException(ErrorCode.GUEST_TYPE_SURCHARGE_POLICY_NOT_FOUND));
 
+                    if (request.getNewGuestFullName() == null || request.getNewGuestFullName().isBlank() || request.getNewGuestIdentityType() == null) {
+                        throw new AppException(ErrorCode.MISSING_EXTRA_GUEST_IDENTITY_INFO);
+                    }
+
+                    BookingGuest newGuest = BookingGuest.builder()
+                            .bookingDetail(detail)
+                            .fullName(request.getNewGuestFullName())
+                            .guestType(GuestType.valueOf(request.getGuestType().toUpperCase()))
+                            .identityType(request.getNewGuestIdentityType())
+                            .identityNumber(request.getNewGuestIdentityNumber())
+                            .birthDate(request.getNewGuestBirthDate())
+                            .build();
+                    bookingGuestRepository.save(newGuest);
+
+                    int addedQty = request.getQuantity() != null ? request.getQuantity() : 1;
+                    detail.setGuestCount((short) (detail.getGuestCount() + addedQty));
+                    if ("ADULT".equalsIgnoreCase(request.getGuestType())) {
+                        detail.setAdultCount((short) (detail.getAdultCount() + addedQty));
+                    } else if ("CHILD".equalsIgnoreCase(request.getGuestType())) {
+                        detail.setChildCount((short) (detail.getChildCount() + addedQty));
+                    } else {
+                        detail.setInfantCount((short) (detail.getInfantCount() + addedQty));
+                    }
+                    bookingDetailRepository.save(detail);
                     itemName = "Phụ thu thêm người (" + request.getGuestType() + ")";
-                }
-                // Xử lý cho các phí khác (EXTRA_BED, EARLY_CHECKIN...) -> Không cần check AgePolicy
-                else {
-                    activeRule = matchingRules.get(0);
-                    itemName = "Phụ thu " + type.name();
 
-                    // (Optional) Đọc thêm điều kiện min_hours nếu cần
-                    if (ChargeType.EARLY_CHECKIN.equals(type) && activeRule.getConditions() != null) {
-                        itemName += " (>= " + activeRule.getConditions().getMinHours() + "h)";
+                    // Tính giá trị của EXTRA_PERSON theo rule gốc
+                    if (com.hotel.booking.modules.pricing.enums.AdjustmentType.FIXED == activeRule.getAdjustmentType()) {
+                        unitPrice = activeRule.getAdjustmentValue();
+                    } else {
+                        unitPrice = detail.getHotelRoomType().getBasePrice()
+                                .multiply(activeRule.getAdjustmentValue())
+                                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
                     }
                 }
+                // ==========================================
+                // THÀNH PHẦN B: XỬ LÝ GIƯỜNG PHỤ (EXTRA_BED)
+                // ==========================================
+                else if (ChargeType.EXTRA_BED.equals(type)) {
+                    activeRule = matchingRules.get(0);
+                    itemName = "Phụ thu Giường phụ (Extra Bed)";
 
-                // 4. Tính toán Unit Price dựa trên Rule Enum
-                if (AdjustmentType.FIXED == activeRule.getAdjustmentType()) {
-                    unitPrice = activeRule.getAdjustmentValue();
-                } else if (AdjustmentType.PERCENT == activeRule.getAdjustmentType()) {
-                    // Nếu là % -> Tính dựa trên Base Price của Hạng phòng
-                    unitPrice = detail.getHotelRoomType().getBasePrice()
-                            .multiply(activeRule.getAdjustmentValue())
-                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                    if (com.hotel.booking.modules.pricing.enums.AdjustmentType.FIXED == activeRule.getAdjustmentType()) {
+                        unitPrice = activeRule.getAdjustmentValue();
+                    } else {
+                        unitPrice = detail.getHotelRoomType().getBasePrice()
+                                .multiply(activeRule.getAdjustmentValue())
+                                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                    }
+                }
+                // ==========================================
+                // THÀNH PHẦN C: XỬ LÝ ĐA MỨC JSONB (EARLY_CHECKIN / LATE_CHECKOUT)
+                // ==========================================
+                else {
+                    activeRule = matchingRules.get(0); // Bốc rule cấu hình thời gian của hạng phòng ra
+
+                    double hoursOver = 0.0;
+                    if (ChargeType.EARLY_CHECKIN.equals(type)) {
+                        itemName = "Phụ thu Check-in sớm";
+                        int standardIn = detail.getBooking().getHotel().getCheckInTime() != null
+                                ? detail.getBooking().getHotel().getCheckInTime().getHour() : 14;
+                        int actualIn = OffsetDateTime.now().getHour();
+                        hoursOver = Math.max(0, standardIn - actualIn); // Ví dụ: 14h - 8h = 6 tiếng
+                    } else {
+                        itemName = "Phụ thu Check-out muộn";
+                        int standardOut = detail.getBooking().getHotel().getCheckOutTime() != null
+                                ? detail.getBooking().getHotel().getCheckOutTime().getHour() : 12;
+                        int actualOut = OffsetDateTime.now().getHour();
+                        hoursOver = Math.max(0, actualOut - standardOut); // Ví dụ: 16h - 12h = 4 tiếng
+                    }
+
+                    // CHỐT CHẶN AN TOÀN: Nếu không bị lệch giờ (đến chuẩn giờ hoặc muộn hơn) thì KHÔNG TÍNH PHẠT
+                    if (hoursOver <= 0) {
+                        log.info("Khách không vi phạm giờ quy định, không phát sinh phụ thu.");
+                        return; // THOÁT LUỒNG KHỎI PHẢI TẠO CHARGE
+                    }
+
+                    var conditions = activeRule.getConditions();
+                    if (conditions == null || conditions.getTimeTiers() == null || conditions.getTimeTiers().isEmpty()) {
+                        throw new AppException(ErrorCode.INVALID_SURCHARGE_TIME_TIER_CONFIG); // "Chưa cấu hình mảng đa mức cho thời gian!"
+                    }
+
+                    // QUÉT MẢNG JSONB TÌM BẬC PHẠT (TIME TIER) PHÙ HỢP
+                    com.hotel.booking.modules.pricing.entity.pojo.TimeTier winningTier = null;
+
+                    // Sắp xếp các mốc upToHours tăng dần để quét từ nhỏ đến lớn
+                    List<com.hotel.booking.modules.pricing.entity.pojo.TimeTier> sortedTiers = conditions.getTimeTiers().stream()
+                            .sorted(Comparator.comparing(t -> t.getUpToHours() == null ? Double.MAX_VALUE : t.getUpToHours()))
+                            .toList();
+
+                    for (var tier : sortedTiers) {
+                        if (tier.getUpToHours() == null || hoursOver <= tier.getUpToHours()) {
+                            winningTier = tier;
+                            break; // Tìm thấy mốc chặn trên phù hợp là dừng ngay!
+                        }
+                    }
+
+                    if (winningTier == null) {
+                        throw new AppException(ErrorCode.NO_MATCHING_TIME_TIER_FOUND); // "Không tìm thấy khung phạt phù hợp"
+                    }
+
+                    // TÍNH TOÁN TIỀN PHẠT DỰA TRÊN TIME TIER BỐC ĐƯỢC
+                    if (com.hotel.booking.modules.pricing.enums.AdjustmentType.FIXED == winningTier.getAdjustmentType()) {
+                        unitPrice = winningTier.getAdjustmentValue();
+                    } else {
+                        // Nếu phạt theo PERCENT, nhân với giá gốc BasePrice của hạng phòng
+                        unitPrice = detail.getHotelRoomType().getBasePrice()
+                                .multiply(winningTier.getAdjustmentValue())
+                                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                    }
+
+                    itemName += " (Mức phạt: " + hoursOver + " giờ)";
                 }
 
-                // Thuế của các phụ thu lưu trú thường đi theo thuế tiền phòng
+                // Thuế gánh của phụ thu đi theo thuế tiền phòng gốc
                 vatRate = detail.getVatRate();
                 break;
 
@@ -291,7 +381,7 @@ public class FrontDeskServiceImpl implements FrontDeskService {
             case PRICE_ADJUSTMENT:
             case OTHER:
                 if (request.getUnitPrice() == null || request.getVatRate() == null) {
-                    throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // "Phải nhập giá và thuế thủ công"
+                    throw new AppException(ErrorCode.MISSING_MANUAL_CHARGE_AMOUNT); // "Phải nhập giá và thuế thủ công"
                 }
                 unitPrice = request.getUnitPrice();
                 vatRate = request.getVatRate();
@@ -300,10 +390,30 @@ public class FrontDeskServiceImpl implements FrontDeskService {
         }
 
         // ==============================================================
-        // 4. TÍNH TOÁN & LƯU TRỮ (CHUẨN CÔNG THỨC THUẾ CHỒNG PHÍ)
+        // 4. TÍNH TOÁN & LƯU TRỮ
         // ==============================================================
-        BigDecimal qty = BigDecimal.valueOf(request.getQuantity());
-        BigDecimal subtotal = unitPrice.multiply(qty);
+        int finalQty = request.getQuantity(); // Dùng biến mới để chứa số lượng chốt cuối cùng
+        BigDecimal subtotal;
+
+        // Xử lý nhân hệ số "Số đêm" (Per Night) cho Người thêm & Giường phụ
+        if (ChargeType.EXTRA_PERSON.equals(type) || ChargeType.EXTRA_BED.equals(type)) {
+            LocalDate chargeStartDate = LocalDate.now();
+            if (chargeStartDate.isBefore(detail.getCheckInDate())) {
+                chargeStartDate = detail.getCheckInDate();
+            }
+
+            long nights = ChronoUnit.DAYS.between(chargeStartDate, detail.getCheckOutDate());
+            if (nights < 1) nights = 1;
+
+            // CỘNG DỒN SỐ LƯỢNG: Ví dụ 1 giường x 3 đêm = 3 (Bán ra 3 đơn vị giường)
+            finalQty = request.getQuantity() * (int) nights;
+
+            subtotal = unitPrice.multiply(BigDecimal.valueOf(finalQty));
+            itemName += " (" + nights + " đêm)";
+        } else {
+            // Các loại phí 1 lần thì giữ nguyên Quantity
+            subtotal = unitPrice.multiply(BigDecimal.valueOf(finalQty));
+        }
 
         // A. Kéo Service Fee Rate từ Booking (Đồng bộ tuyệt đối với Invoice)
         BigDecimal serviceFeeRate = detail.getBooking().getServiceFeeRate();
@@ -331,12 +441,12 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                 .chargeType(type)
                 .itemName(itemName)
                 .description(request.getDescription())
-                .quantity(request.getQuantity())
+                .quantity(finalQty)
                 .unitPrice(unitPrice)
                 .subtotal(subtotal)
                 .vatRate(vatRate)
-                .vatAmount(vatAmount)       // Sẽ ra 1680 VNĐ
-                .totalAmount(totalAmount)   // Sẽ ra 22680 VNĐ chuẩn đét
+                .vatAmount(vatAmount)
+                .totalAmount(totalAmount)
                 .issuedAt(OffsetDateTime.now())
                 .build();
 
@@ -345,7 +455,6 @@ public class FrontDeskServiceImpl implements FrontDeskService {
         // ==============================================================
         // 5. Cập nhật tiền Real-time cho Booking tổng
         // ==============================================================
-        // Bơm thẳng các con số vừa tính chuẩn ở trên vào cỗ máy tài chính
         bookingFinancialService.addAmountToBooking(
                 bookingId,
                 subtotal,
@@ -362,19 +471,17 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                         .orElseThrow(() -> new AppException(ErrorCode.INVOICE_NOT_FOUND)));
 
         InvoiceLineType lineType = switch (type) {
-            case PACKAGE_ITEM -> InvoiceLineType.PACKAGE_ITEM;
             case EXTRA_SERVICE -> InvoiceLineType.EXTRA_SERVICE;
             case EXTRA_PERSON, EXTRA_BED, EARLY_CHECKIN, LATE_CHECKOUT -> InvoiceLineType.SURCHARGE;
             case PRICE_ADJUSTMENT, OTHER -> InvoiceLineType.OTHER;
+            default -> throw new AppException(ErrorCode.INVALID_CHARGE_TYPE_FOR_INVOICE);
         };
 
-        // Hàm addLine bên InvoiceService cũng đã được cập nhật công thức này,
-        // nên dữ liệu insert vào invoice_details sẽ giống hệt booking_charges 100%.
         invoiceService.addLine(
                 invoice.getId(),
                 lineType,
                 itemName,
-                request.getQuantity(),
+                finalQty, // <--- NÉM SỐ LƯỢNG ĐÃ NHÂN ĐÊM VÀO ĐỂ INVOICE TÍNH ĐÚNG TOÁN HỌC
                 unitPrice,
                 vatRate
         );
@@ -402,16 +509,14 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                 .map(Payment::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Lúc này totalPaid sẽ lấy đúng 3,969,000.
-        // remaining = 4,083,660 - 3,969,000 = 114,660 (Đúng số tiền khách thực tế còn nợ)
         if (totalDebt.compareTo(totalPaid) > 0) {
             BigDecimal remaining = totalDebt.subtract(totalPaid);
 
             // Tự động tạo bản ghi thanh toán cho số tiền còn thiếu
             Payment autoPayment = Payment.builder()
                     .booking(booking)
-                    .totalAmount(remaining) // Sẽ insert 114,660
-                    .paymentMethod(PaymentMethod.CASH)
+                    .totalAmount(remaining)
+                    .paymentMethod(PaymentMethod.BANK_TRANSFER)
                     .status(PaymentStatus.SUCCESS)
                     .paidAt(OffsetDateTime.now())
                     .build();
@@ -426,7 +531,7 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                     InvoiceLineType.PAYMENT,
                     "Thanh toán phần còn thiếu tại quầy",
                     1,
-                    remaining.negate(), // Sẽ insert -114,660
+                    remaining.negate(),
                     BigDecimal.ZERO
             );
 
@@ -450,12 +555,10 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                 }
 
                 // B. Xử lý Room Slots (Từng đêm)
-                // Lưu ý: Spring Data JPA vẫn hiểu findByRoomInstanceIdAndBookingDetailId vì nó traverse object
                 List<RoomSlot> slots = roomSlotRepository.findByRoomInstanceIdAndBookingDetailId(room.getId(), detail.getId());
                 for (RoomSlot slot : slots) {
                     if (!slot.getSlotDate().isBefore(today)) {
                         slot.setStatus(RoomSlotStatus.READY);
-                        // [ĐÃ FIX]: Dùng hàm set object của JPA thay vì ID
                         slot.setBookingDetail(null);
                     } else {
                         slot.setStatus(RoomSlotStatus.OCCUPIED);
@@ -503,6 +606,11 @@ public class FrontDeskServiceImpl implements FrontDeskService {
         String repFullName = request.getRepLastName() + " " + request.getRepFirstName();
         log.info("Xử lý Walk-in Booking cho đại diện: {} (SĐT: {})", repFullName, request.getRepPhone());
 
+        TaxCategory roomTaxCategory = taxCategoryRepository.findAllByIsDeletedFalse().stream()
+                .filter(tc -> "ROOM".equalsIgnoreCase(tc.getCategoryCode()))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.TAX_CATEGORY_NOT_FOUND));
+
         // ======================================================================
         // BƯỚC 1: TRA CỨU NGƯỜI ĐẠI DIỆN THEO PHONE )
         // ======================================================================
@@ -513,15 +621,21 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                             .lastName(request.getRepLastName())
                             .fullName(repFullName)
                             .phone(request.getRepPhone())
+                            .identityType(request.getRepIdentityType())
                             .identityNumber(request.getRepIdentityNumber())
                             .build();
                     return guestRepository.save(newGuest);
                 });
 
         // ======================================================================
-        // BƯỚC 2: KHỞI TẠO BOOKING MASTER & INVOICE DRAFT TRỐNG (MÓNG ĐỂ GHI SỔ)
+        // BƯỚC 2: KHỞI TẠO BOOKING MASTER & INVOICE DRAFT TRỐNG
         // ======================================================================
-        String bookingNumber = "BKG-" + OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"));
+        String datePart = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"));
+
+        // Lấy 6 ký tự đầu của UUID, chuyển thành chữ IN HOA (Ví dụ: 9F2A)
+        String randomPart = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
+        String bookingNumber = "BKG-" + datePart + "-" + randomPart;
 
         Hotel hotel = hotelRepository.findById(hotelId)
                 .orElseThrow(() -> new AppException(ErrorCode.HOTEL_NOT_FOUND));
@@ -535,19 +649,19 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                 .hotel(hotel)
                 .status(BookingStatus.CHECKED_IN)
                 .subtotalAmount(BigDecimal.ZERO)
-                .serviceFeeRate(hotelServiceFeeRate) // <--- Gán thẳng vào Booking
+                .serviceFeeRate(hotelServiceFeeRate)
                 .serviceFeeAmount(BigDecimal.ZERO)
                 .totalVatAmount(BigDecimal.ZERO)
                 .totalAmount(BigDecimal.ZERO)
                 .build();
         booking = bookingRepository.saveAndFlush(booking);
 
-        // Sinh luôn hóa đơn DRAFT rỗng
+        // Sinh hóa đơn DRAFT
         Invoice invoice = Invoice.builder()
                 .booking(booking)
                 .invoiceNumber("INV-" + System.currentTimeMillis())
                 .subTotal(BigDecimal.ZERO)
-                .serviceFeeRate(hotelServiceFeeRate) // <--- GÁN VÀO INVOICE (Chữa triệt để lỗi tính sai VAT dòng 47)
+                .serviceFeeRate(hotelServiceFeeRate)
                 .serviceFeeAmount(BigDecimal.ZERO)
                 .vatAmount(BigDecimal.ZERO)
                 .grandTotal(BigDecimal.ZERO)
@@ -564,7 +678,7 @@ public class FrontDeskServiceImpl implements FrontDeskService {
 
             if (!roomReq.getCheckInDate().equals(LocalDate.now())) {
                 log.error("Lỗi: Cố tình Walk-in cho ngày tương lai: {}", roomReq.getCheckInDate());
-                throw new AppException(ErrorCode.INVALID_WALKIN_DATE); // Hoặc mã lỗi INVALID_WALKIN_DATE của mày
+                throw new AppException(ErrorCode.INVALID_WALKIN_DATE);
             }
 
             RoomInstance roomInstance = roomInstanceRepository.findById(roomReq.getRoomInstanceId())
@@ -573,7 +687,6 @@ public class FrontDeskServiceImpl implements FrontDeskService {
             // [PESSIMISTIC LOCK 1]: Khóa row cứng các Slot từng đêm
             List<RoomSlot> slots = getOrGenerateSlots(roomInstance, roomReq.getCheckInDate(), roomReq.getCheckOutDate());
 
-            // Bây giờ logic check STATUS sẽ không bao giờ bị null hay size() != expected
             for (RoomSlot slot : slots) {
                 if (slot.getStatus() != RoomSlotStatus.READY) {
                     throw new AppException(ErrorCode.ROOM_ALREADY_TAKEN);
@@ -591,7 +704,7 @@ public class FrontDeskServiceImpl implements FrontDeskService {
             }
 
             // ======================================================================
-            // [ĐÃ SỬA]: MAPPING ADD-ON MỚI CÓ QUANTITY ĐỂ NÉM VÀO MÁY XAY TIỀN
+            //MAPPING ADD-ON MỚI CÓ QUANTITY ĐỂ NÉM VÀO MÁY XAY TIỀN
             // ======================================================================
             List<RoomRequest.SelectedAddOn> mappedAddOns = roomReq.getAddOns() != null ?
                     roomReq.getAddOns().stream()
@@ -621,6 +734,8 @@ public class FrontDeskServiceImpl implements FrontDeskService {
             PricingResponse priceResp = priceAggregationService.calculatePrice(pricingRequest);
             PricingResponse.PriceDetail roomPriceDetail = priceResp.getRooms().get(0).getPriceDetail();
 
+            BigDecimal roomVatRate = taxCalculatorService.getTaxRate(roomTaxCategory.getId(), roomReq.getCheckInDate());
+
             // Lưu dữ liệu vào bảng booking_details
             BookingDetail detail = BookingDetail.builder()
                     .booking(booking)
@@ -634,9 +749,11 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                     .checkInDate(roomReq.getCheckInDate())
                     .checkOutDate(roomReq.getCheckOutDate())
                     .actualCheckInAt(OffsetDateTime.now())
-                    .roomAmount(roomPriceDetail.getBasePrice().add(roomPriceDetail.getSurchargeAmount()).subtract(roomPriceDetail.getDiscountAmount()))
+                    .roomAmount(roomPriceDetail.getBasePrice()
+                            .add(roomPriceDetail.getSurchargeAmount())
+                            .subtract(roomPriceDetail.getDiscountAmount()))
                     .discountAmount(roomPriceDetail.getDiscountAmount())
-                    .vatRate(BigDecimal.valueOf(8)) // Cứng 8% theo luật thuế phòng khách sạn
+                    .vatRate(roomVatRate)
                     .vatAmount(roomPriceDetail.getTaxAmount())
                     .finalAmount(roomPriceDetail.getFinalPrice())
                     .build();
@@ -644,41 +761,12 @@ public class FrontDeskServiceImpl implements FrontDeskService {
 
             BookingRoomId bookingRoomId = new BookingRoomId(detail.getId(), roomInstance.getId());
 
-            // SỬA LỖI #1: Lưu BookingRoom (Liên kết BookingDetail và RoomInstance)
             BookingRoom bookingRoom = BookingRoom.builder()
                     .id(bookingRoomId)
                     .bookingDetail(detail)
                     .roomInstance(roomInstance)
                     .build();
             bookingRoomRepository.save(bookingRoom);
-
-            // ======================================================================
-            // [AUTO EARLY CHECK-IN] XỬ LÝ PHẠT TỰ ĐỘNG CHUẨN 5 SAO
-            // ======================================================================
-            int currentHour = OffsetDateTime.now().getHour();
-
-            // [ĐÃ SỬA]: Lấy giờ check-in linh động từ cấu hình Hotel. Fallback an toàn là 14h nếu DB null.
-            int standardCheckInHour = 14;
-            if (hotel.getCheckInTime() != null) {
-                // Giả định checkInTime của mày đang lưu dạng LocalTime hoặc OffsetTime
-                standardCheckInHour = hotel.getCheckInTime().getHour();
-            }
-
-            if (currentHour < standardCheckInHour) {
-                try {
-                    AddBookingChargeRequest earlyChargeReq = new AddBookingChargeRequest();
-                    earlyChargeReq.setBookingDetailId(detail.getId());
-                    earlyChargeReq.setChargeType(ChargeType.EARLY_CHECKIN.name());
-                    earlyChargeReq.setQuantity(1);
-                    earlyChargeReq.setDescription("Hệ thống tự động thu phí check-in sớm lúc " + currentHour + "h (Walk-in)");
-
-                    addInStayCharge(booking.getId(), earlyChargeReq);
-                    log.info("Đã tự động thêm phí EARLY_CHECKIN cho phòng {}", roomInstance.getRoomNumber());
-                } catch (Exception e) {
-                    // Bắt lỗi để không làm chết luồng nếu chưa cấu hình rule phạt trong DB
-                    log.warn("Không tính được phí Early Check-in tự động: {}", e.getMessage());
-                }
-            }
 
             // SỬA LỖI #2: Save slot vào DB sau khi đổi trạng thái
             roomSlotRepository.saveAll(slots);
@@ -691,6 +779,7 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                         .guestType(GuestType.valueOf(guestReq.getGuestType().toUpperCase()))
                         .identityType(guestReq.getIdentityType() != null ? guestReq.getIdentityType() : null)
                         .identityNumber(guestReq.getIdentityNumber())
+                        .birthDate(guestReq.getBirthDate())
                         .build();
                 bookingGuestRepository.save(bg);
             }
@@ -755,7 +844,7 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                     "Tiền phòng: " + roomInstance.getRoomNumber() + " (" + roomReq.getCheckInDate() + " - " + roomReq.getCheckOutDate() + ")",
                     1,
                     roomPureAmount,
-                    calculatedVatRate
+                    roomVatRate
             );
 
             if (roomReq.getAddOns() != null && !roomReq.getAddOns().isEmpty()) {
@@ -785,7 +874,7 @@ public class FrontDeskServiceImpl implements FrontDeskService {
                     LocalDate checkInDate = roomReq.getCheckInDate();
 
                     BigDecimal itemVatRate = taxCalculatorService.getTaxRate(taxCategoryId, checkInDate);
-                    // Lưu ý: Calculate tax trên addOnTaxableAmount (đã có service fee)
+                    //Calculate tax trên addOnTaxableAmount (đã có service fee)
                     BigDecimal addOnVatAmount = taxCalculatorService.calculateTax(taxCategoryId, addOnTaxableAmount, checkInDate);
 
                     BigDecimal addOnTotalAmount = addOnTaxableAmount.add(addOnVatAmount);
@@ -861,7 +950,6 @@ public class FrontDeskServiceImpl implements FrontDeskService {
 
         BigDecimal grandTotal = refreshedBooking.getTotalAmount();
 
-        // Khách thanh toán 2.835.000, nhưng grandTotal là 3.375.000 => Khách nợ 540.000 (Remaining Balance)
         BigDecimal remainingBalance = grandTotal.subtract(request.getAmountPaid());
 
         return WalkInBookingResponse.builder()

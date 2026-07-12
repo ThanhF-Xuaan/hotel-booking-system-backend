@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDate;
+
 @Getter
 @Setter
 @Builder
@@ -21,4 +23,5 @@ public class WalkInGuestRequest {
     //Theo schema của mày, nếu guestType = 'ADULT' thì 2 trường dưới BẮT BUỘC phải có!
     IdentityType identityType;   // "CCCD", "PASSPORT"
     String identityNumber; // "00123456789"
+    LocalDate birthDate;
 }

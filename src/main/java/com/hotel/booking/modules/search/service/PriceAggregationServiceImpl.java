@@ -98,10 +98,9 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                 }
 
                 // Capacity validation per room unit
-                // Capacity validation per room unit
                 RoomOccupancy occ = roomReq.getOccupancy();
 
-                // [FIX BẤT TỬ]: Chống NPE do Auto-Unboxing
+                //Chống NPE do Auto-Unboxing
                 int reqAdults = occ.getAdults() != null ? occ.getAdults() : 0;
                 int reqChildren = occ.getChildren() != null ? occ.getChildren() : 0;
                 int reqInfants = occ.getInfants() != null ? occ.getInfants() : 0;
@@ -135,16 +134,15 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                 List<SurchargeRule> surchargeRules = surchargeRuleRepository
                         .findAllByHotelRoomTypeIdAndIsDeletedFalse(roomType.getId());
 
-                TaxCategory roomTaxCategory = taxCategoryRepository.findAllByIsDeletedFalse().stream()
-                        .filter(tc -> "ROOM".equalsIgnoreCase(tc.getCategoryCode()))
-                        .findFirst()
+                TaxCategory roomTaxCategory = taxCategoryRepository
+                        .findByCategoryCodeAndIsDeletedFalse("ROOM")
                         .orElseThrow(() -> new AppException(ErrorCode.TAX_CATEGORY_NOT_FOUND));
+
 
                 // Create a virtual PricingRequest representing this specific room unit
                 RoomRequest virtualRoom = RoomRequest.builder()
                         .hotelRoomTypeId(roomReq.getHotelRoomTypeId())
                         .occupancy(occ)
-                        // Bắt buộc truyền AddOns xuống Context để xử lý
                         .addOns(roomReq.getAddOns())
                         .build();
 
@@ -379,7 +377,7 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                                     boolean isActive = "ACTIVE".equalsIgnoreCase(statusStr);
                                     boolean isCurrentDate = !rule.getStartDate().isAfter(context.getDate()) && !rule.getEndDate().isBefore(context.getDate());
 
-                                    // [FIX]: Bắt buộc CÓ AgePolicy VÀ guestType = ADULT
+                                    //Bắt buộc CÓ AgePolicy VÀ guestType = ADULT
                                     boolean isAdultPolicy = rule.getAgePolicy() != null
                                             && rule.getAgePolicy().getGuestType() != null
                                             && "ADULT".equalsIgnoreCase(rule.getAgePolicy().getGuestType().toString());
@@ -405,7 +403,7 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                     }
 
                     // -----------------------------------------------------
-                    // 2. XỬ LÝ PHỤ THU TRẺ EM (CHILD - CHECK HẲN HOI)
+                    // 2. XỬ LÝ PHỤ THU TRẺ EM (CHILD)
                     // -----------------------------------------------------
                     int standardChildren = context.getHotelRoomType().getStandardChildren();
                     int requestedChildren = occ.getChildren() != null ? occ.getChildren() : 0; // Chống NPE
@@ -422,7 +420,7 @@ public class PriceAggregationServiceImpl implements PriceAggregationService {
                                     boolean isActive = "ACTIVE".equalsIgnoreCase(statusStr);
                                     boolean isCurrentDate = !rule.getStartDate().isAfter(context.getDate()) && !rule.getEndDate().isBefore(context.getDate());
 
-                                    // [FIX]: Bắt buộc CÓ AgePolicy VÀ guestType = CHILD
+                                    //Bắt buộc CÓ AgePolicy VÀ guestType = CHILD
                                     boolean isChildPolicy = rule.getAgePolicy() != null
                                             && rule.getAgePolicy().getGuestType() != null
                                             && "CHILD".equalsIgnoreCase(rule.getAgePolicy().getGuestType().toString());

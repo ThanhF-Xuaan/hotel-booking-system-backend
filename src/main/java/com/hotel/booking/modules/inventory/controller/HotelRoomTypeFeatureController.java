@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/hotel/api/v1/inventory/hotel-room-types/{hotelRoomTypeId}/features")
+@RequestMapping("/api/v1/inventory/hotel-room-types/{hotelRoomTypeId}/features")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Inventory - Hotel Room Type Features", description = "Các API đồng bộ cấu hình tiện ích cho Loại phòng (HotelRoomType)")

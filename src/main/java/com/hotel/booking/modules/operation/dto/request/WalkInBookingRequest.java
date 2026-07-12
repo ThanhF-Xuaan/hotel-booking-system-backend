@@ -1,5 +1,6 @@
 package com.hotel.booking.modules.operation.dto.request;
 
+import com.hotel.booking.modules.crm.enums.IdentityType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -24,6 +25,9 @@ public class WalkInBookingRequest {
     String repLastName;
     @NotBlank
     String repPhone;
+
+    IdentityType repIdentityType; // CCCD, PASSPORT, DRIVER_LICENSE...
+
     String repIdentityNumber; // CCCD/Passport của người đại diện
 
     // 2. DANH SÁCH CÁC PHÒNG ĐƯỢC CHỌN (Đoàn 5 phòng thì add 5 object vào đây)

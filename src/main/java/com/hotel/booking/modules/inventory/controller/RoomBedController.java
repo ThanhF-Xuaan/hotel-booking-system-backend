@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/hotel/api/v1/inventory/room-beds")
+@RequestMapping("/api/v1/inventory/room-beds")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Inventory - Room Bed Management", description = "Các API quản lý danh mục giường (RoomBed)")

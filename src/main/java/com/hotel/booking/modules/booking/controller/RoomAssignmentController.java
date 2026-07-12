@@ -14,7 +14,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/hotel/api/v1/booking")
+@RequestMapping("/api/v1/booking")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Room Assignment", description = "API Gán phòng vật lý")

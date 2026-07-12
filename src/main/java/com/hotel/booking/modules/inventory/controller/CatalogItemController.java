@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/hotel/api/v1/inventory/catalog-items")
+@RequestMapping("/api/v1/inventory/catalog-items")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Inventory - Catalog Items", description = "Các API quản lý mặt hàng/dịch vụ trong danh mục kho hàng (CatalogItem)")

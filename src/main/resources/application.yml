@@ -6,6 +6,16 @@ spring:
 
 server:
   port: 8080
+  forward-headers-strategy: framework
+  servlet:
+    context-path: /hotel  # <--- THÊM DÒNG NÀY ĐỂ ĐỒNG BỘ VỚI NGINX
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  # Thêm dòng này để Swagger sinh URL API qua NGINX
+  api-docs:
+    path: /v3/api-docs
 
 jwt:
   signerKey: ${JWT_SECRET:8e18c9e3f2cab32b039df13a3c1ee6def879acad674f279daba9066d6dd62e5a}

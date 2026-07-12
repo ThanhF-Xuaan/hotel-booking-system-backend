@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/hotel/api/v1/pricing/age-policies")
+@RequestMapping("/api/v1/pricing/age-policies")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Pricing - Hotel Age Policy Management", description = "Các API quản lý Chính sách độ tuổi của khách sạn (HotelAgePolicy)")

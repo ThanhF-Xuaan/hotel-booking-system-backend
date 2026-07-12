@@ -69,7 +69,7 @@ public interface RoomInstanceRepository extends JpaRepository<RoomInstance, Inte
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "5000")}) // Chờ tối đa 3 giây (3000ms)
+    @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000")}) // Chờ tối đa 3 giây (3000ms)
     @Query("SELECT r FROM RoomInstance r WHERE r.id = :id")
     Optional<RoomInstance> findByIdWithPessimisticLock(@Param("id") Integer id);
 

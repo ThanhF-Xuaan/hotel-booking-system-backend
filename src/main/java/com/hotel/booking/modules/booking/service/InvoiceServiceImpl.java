@@ -46,7 +46,7 @@ public class InvoiceServiceImpl implements InvoiceService{
         BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(qty));
 
         BigDecimal serviceFeeRate = BigDecimal.ZERO;
-        if (!InvoiceLineType.PAYMENT.name().equals(type.name()) && !"DISCOUNT".equals(type.name())) {
+        if (type != InvoiceLineType.PAYMENT) {
             serviceFeeRate = invoice.getServiceFeeRate() != null ? invoice.getServiceFeeRate() : BigDecimal.ZERO;
         }
 
@@ -62,7 +62,7 @@ public class InvoiceServiceImpl implements InvoiceService{
 
         InvoiceDetail detail = InvoiceDetail.builder()
                 .invoice(invoice)
-                .lineType(InvoiceLineType.valueOf(type.name())) // Lưu ý ép kiểu sang String nếu entity của mày là String
+                .lineType(InvoiceLineType.valueOf(type.name()))
                 .description(description)
                 .quantity(qty)
                 .unitPrice(unitPrice)
@@ -72,7 +72,7 @@ public class InvoiceServiceImpl implements InvoiceService{
                 .totalAmount(total)
                 .build();
 
-        // CHỈ SAVE DETAIL, TUYỆT ĐỐI KHÔNG CỘNG LẠI VÀO INVOICE HEADER NỮA
+        // CHỈ SAVE DETAIL
         invoiceDetailRepository.save(detail);
 
         log.info("Đã thêm dòng hóa đơn [{}] vào Invoice [{}]. Total: {}", type, invoiceId, total);

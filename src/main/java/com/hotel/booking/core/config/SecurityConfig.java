@@ -27,22 +27,27 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
         private final String[] PUBLIC_ENDPOINTS = {
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html",
-                        "/hotel/api/v1/iam/auth/token",
-                        "/hotel/api/v1/iam/auth/introspect",
-                        "/hotel/api/v1/search/**",
-                        "/hotel/api/v1/booking/**",
-                        "/hotel/api/v1/inventory/hotels",
-                        "/hotel/api/v1/inventory/hotels/",
-                        "/hotel/api/v1/inventory/hotels/**",
-                        "/hotel/api/v1/inventory/room-types",
-                        "/hotel/api/v1/inventory/hotel-room-types",
-                        "/hotel/api/v1/inventory/internal/jobs/**",
-                        "/hotel/api/v1/pos/**",
-                        "/hotel/api/v1/operation/**",
-                        "/hotel/api/v1/report/**"
+                "/v3/api-docs/**",
+                "/swagger-ui/**",
+                "/swagger-ui.html",
+                "/api/v1/iam/auth/token",
+                "/api/v1/iam/auth/introspect",
+                "/api/v1/search/**",
+                "/api/v1/inventory/hotels",
+                "/api/v1/inventory/hotels/**",
+                "/api/v1/inventory/room-types",
+                "/api/v1/inventory/room-types/**",
+                "/api/v1/inventory/hotel-room-types",
+                "/api/v1/inventory/hotel-room-types/**",
+                "/api/v1/pricing/surcharge-rules",
+                "/api/v1/pricing/surcharge-rules/**",
+                "/api/v1/pricing/age-policies",
+                "/api/v1/pricing/age-policies/**",
+                "/api/v1/booking/initiate",
+                "/api/v1/booking/confirm",
+                "/api/v1/booking/*/available-rooms",
+                "/api/v1/booking/*/rooms/block",
+                "/api/v1/booking/*/rooms/confirm"
         };
 
         @Value("${jwt.signerKey}")

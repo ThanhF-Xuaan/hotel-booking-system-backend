@@ -1,16 +1,18 @@
-package com.hotel.booking.modules.operation.service;
+    package com.hotel.booking.modules.operation.service;
 
-import com.hotel.booking.modules.operation.dto.request.AddBookingChargeRequest;
-import com.hotel.booking.modules.operation.dto.request.CheckInRequest;
-import com.hotel.booking.modules.operation.dto.request.WalkInBookingRequest;
-import com.hotel.booking.modules.operation.dto.response.WalkInBookingResponse;
+    import com.hotel.booking.modules.operation.dto.request.AddBookingChargeRequest;
+    import com.hotel.booking.modules.operation.dto.request.CheckInRequest;
+    import com.hotel.booking.modules.operation.dto.request.WalkInBookingRequest;
+    import com.hotel.booking.modules.operation.dto.response.WalkInBookingResponse;
 
-public interface FrontDeskService {
-    void processCheckIn(Long bookingId, CheckInRequest request);
+    import java.util.Map;
 
-    void addInStayCharge(Long bookingId, AddBookingChargeRequest request);
+    public interface FrontDeskService {
+        void processCheckIn(Long bookingId, CheckInRequest request);
 
-    void processCheckOut(Long bookingId);
+        void addInStayCharge(Long bookingId, AddBookingChargeRequest request);
 
-    WalkInBookingResponse processWalkInBooking(Short hotelId, WalkInBookingRequest request);
-}
+        void processCheckOut(Long bookingId);
+
+        WalkInBookingResponse processWalkInBooking(Short hotelId, WalkInBookingRequest request);
+    }

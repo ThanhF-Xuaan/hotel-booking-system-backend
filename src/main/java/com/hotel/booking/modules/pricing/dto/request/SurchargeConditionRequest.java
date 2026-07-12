@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
+
 @Getter
 @Setter
 @Builder
@@ -19,5 +21,5 @@ import lombok.experimental.FieldDefaults;
 public class SurchargeConditionRequest {
 
     @Schema(description = "Số giờ tối thiểu", example = "2.0")
-    Double minHours;
+    List<TimeTierRequest> timeTiers;
 }

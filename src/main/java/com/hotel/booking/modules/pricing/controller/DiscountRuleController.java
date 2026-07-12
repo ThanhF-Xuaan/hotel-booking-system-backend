@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/hotel/api/v1/pricing/discount-rules")
+@RequestMapping("/api/v1/pricing/discount-rules")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Pricing - Discount Rule Management", description = "Các API quản lý Quy tắc giảm giá (DiscountRule)")

@@ -33,6 +33,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -43,7 +44,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -75,7 +78,7 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
         String dataKey = "payment:data:" + sessionId;
         String expireKey = "payment:expire:" + sessionId;
 
-        // 1. Lấy dữ liệu giỏ hàng từ Redis
+        // 1. Lấy dữ liệu từ Redis
         String bookingDraftJson = redisTemplate.opsForValue().get(dataKey);
         if (bookingDraftJson == null) {
             throw new RuntimeException("Phiên giao dịch không tồn tại hoặc đã hết hạn!");
@@ -116,7 +119,7 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
             // 5. Khởi tạo Entity Invoice
             Invoice invoice = Invoice.builder()
                     .booking(booking)
-                    .invoiceNumber("INV-" + System.currentTimeMillis())
+                    .invoiceNumber(generateInvoiceNumber())
                     .status(InvoiceStatus.DRAFT)
                     .subTotal(booking.getSubtotalAmount())
                     .serviceFeeRate(booking.getServiceFeeRate())
@@ -211,24 +214,43 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
                 }
 
                 // B. Quét các dịch vụ OPTIONAL (Khách chủ động mua thêm ở Giỏ hàng)
-                if (roomInfo.getAddOns() != null) {
+                if (roomInfo.getAddOns() != null && !roomInfo.getAddOns().isEmpty()) {
                     final Long finalInvoiceId = invoice.getId();
 
+                    // 1. CHUYỂN LIST THÀNH MAP TRƯỚC VÒNG LẶP (Độ phức tạp O(M))
+                    // Key: CatalogItemId, Value: HotelRoomTypeCatalogItem
+                    Map<Integer, HotelRoomTypeCatalogItem> optionalItemsMap = mappedItems.stream()
+                            .filter(m -> ItemUsage.OPTIONAL.equals(m.getItemUsage()))
+                            .collect(Collectors.toMap(
+                                    m -> m.getCatalogItem().getId(),
+                                    m -> m,
+                                    (existing, replacement) -> existing // Xử lý an toàn nếu vô tình có 2 map trùng item
+                            ));
+
+                    // 2. VÒNG LẶP CHECK DATA CHỈ CÒN LÀ O(N) VÀ LOOKUP O(1)
                     for (var addOn : roomInfo.getAddOns()) {
-                        mappedItems.stream()
-                                .filter(m -> m.getCatalogItem().getId().equals(addOn.getCatalogItemId()) && ItemUsage.OPTIONAL.equals(m.getItemUsage()))
-                                .findFirst()
-                                .ifPresent(mapped -> {
-                                    // Số lượng charge = quantity khách chọn * số đêm lưu trú (Nếu tính phí theo đêm)
-                                    chargesToSave.add(buildPackageCharge(detail, mapped, addOn.getQuantity(), numberOfNights, draftData.getCheckIn(), finalInvoiceId));
-                                });
+                        HotelRoomTypeCatalogItem mapped = optionalItemsMap.get(addOn.getCatalogItemId());
+
+                        if (mapped != null) {
+                            // Số lượng charge = quantity khách chọn * số đêm lưu trú (Đã xử lý logic nhân ngày ở trong hàm buildPackageCharge)
+                            chargesToSave.add(buildPackageCharge(
+                                    detail,
+                                    mapped,
+                                    addOn.getQuantity(),
+                                    numberOfNights,
+                                    draftData.getCheckIn(),
+                                    finalInvoiceId
+                            ));
+                        } else {
+                            log.warn("Không tìm thấy Mapping hợp lệ cho OPTIONAL AddOn với CatalogItemId: {}", addOn.getCatalogItemId());
+                        }
                     }
                 }
 
                 // Lưu charge ngay vào DB
                 bookingChargeRepository.saveAll(chargesToSave);
 
-                // CHỐT INVENTORY (Cực kỳ quan trọng)
+                // CHỐT INVENTORY
                 List<RoomAvailability> availabilities = availabilityRepository
                         .findByHotelRoomTypeIdAndDateBetween(
                                 roomInfo.getHotelRoomTypeId(),
@@ -260,7 +282,7 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
                         InvoiceLineType.ROOM,
                         detail.getRoomTypeName() + " (" + detail.getCheckInDate() + " - " + detail.getCheckOutDate() + ")",
                         (int) detail.getQuantity(),
-                        detail.getRoomAmount(), // Lưu ý: cái này cần đơn giá mỗi phòng
+                        detail.getRoomAmount(),
                         detail.getVatRate()
                 );
             }
@@ -270,7 +292,7 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
             Payment payment = Payment.builder()
                     .booking(booking)
                     .totalAmount(booking.getTotalAmount()) // Ghi nhận toàn bộ số tiền
-                    .paymentMethod(PaymentMethod.CASH)     // Giả lập CASH
+                    .paymentMethod(PaymentMethod.VNPAY)     // Giả lập CASH
                     .status(PaymentStatus.SUCCESS)
                     .paidAt(OffsetDateTime.now())
                     .build();
@@ -281,8 +303,8 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
                     InvoiceLineType.PAYMENT,
                     "Thanh toán Online (Giả lập khi Confirm)",
                     1,
-                    booking.getTotalAmount().negate(), // Phải dùng negate() để ra số ÂM
-                    BigDecimal.ZERO // Thanh toán thì đéo có VAT
+                    booking.getTotalAmount().negate(), // negate() để ra số ÂM
+                    BigDecimal.ZERO
             );
 
             log.info("Booking [{}] confirmed & auto-paid: {}", booking.getBookingNumber(), booking.getTotalAmount());
@@ -362,7 +384,23 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
     }
 
     private String generateBookingNumber() {
-        return "BKG-" + OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"));
+        String timestamp = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"));
+        // Cắt 4 ký tự đầu của một chuỗi UUID ngẫu nhiên và viết hoa
+        String randomSuffix = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
+        return "BKG-" + timestamp + "-" + randomSuffix;
+        // Kết quả: BKG-260709213015-A1B2
+    }
+
+    private String generateInvoiceNumber() {
+        // Lấy ngày giờ đến giây
+        String timestamp = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"));
+
+        //4 ký tự ngẫu nhiên (Chữ + Số) viết hoa
+        String randomSuffix = RandomStringUtils.randomAlphanumeric(6).toUpperCase();
+
+        // Kết quả: INV-260710123015-X9QW
+        return "INV-" + timestamp + "-" + randomSuffix;
     }
 
     private BookingCharge buildPackageCharge(
@@ -380,7 +418,7 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
         BigDecimal unitPrice = mapped.getPrice();
         BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(totalQuantity));
 
-        // 2. Lấy Service Fee của Booking (Mày đã gán nó lúc khởi tạo Booking)
+        // 2. Lấy Service Fee của Booking
         BigDecimal serviceFeeRate = detail.getBooking().getServiceFeeRate();
         if (serviceFeeRate == null) serviceFeeRate = BigDecimal.ZERO;
 
@@ -399,7 +437,6 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
         // 6. Tính Tổng tiền của riêng Add-on này
         BigDecimal totalAmount = taxableAmount.add(vatAmount);
 
-        // Vứt sang InvoiceService (bên đó cũng dùng chung 1 logic tính toán nên sẽ khớp từng xu)
         invoiceService.addLine(
                 invoiceId,
                 InvoiceLineType.PACKAGE_ITEM,
@@ -418,7 +455,7 @@ public class BookingConfirmationServiceImpl implements BookingConfirmationServic
                 .unitPrice(unitPrice)
                 .subtotal(subtotal)
                 .vatRate(vatPercent)
-                .vatAmount(vatAmount)        // Đã gánh phí dịch vụ (Sẽ ra 84k thay vì 80k)
+                .vatAmount(vatAmount)
                 .totalAmount(totalAmount)    // Đã gồm Subtotal + Fee + VAT
                 .issuedAt(OffsetDateTime.now())
                 .build();

@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("hotel/api/v1/pos") // Thuộc route riêng của POS
+@RequestMapping("/api/v1/pos") // Thuộc route riêng của POS
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class POSOrderController {

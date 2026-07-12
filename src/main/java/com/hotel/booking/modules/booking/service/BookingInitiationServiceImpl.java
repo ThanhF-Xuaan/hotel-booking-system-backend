@@ -34,7 +34,6 @@ public class BookingInitiationServiceImpl implements BookingInitiationService{
     RoomAvailabilityRepository roomAvailabilityRepository;
     StringRedisTemplate redisTemplate;
     ObjectMapper objectMapper;
-    RoomAvailabilityService roomAvailabilityService;
     HotelRoomTypeCatalogItemRepository mappingRepository;
 
     @Override
@@ -47,7 +46,7 @@ public class BookingInitiationServiceImpl implements BookingInitiationService{
         // 1. Re-validation Inventory & Add-ons
         for (InitiateBookingRequest.RoomSelection room : request.getRooms()) {
 
-            // --- A. KIỂM TRA PHÒNG TRỐNG (Code cũ của bạn giữ nguyên) ---
+            // --- A. KIỂM TRA PHÒNG TRỐNG--
             List<RoomAvailability> availabilities = roomAvailabilityRepository
                     .findByHotelRoomTypeIdAndDateBetween(
                             room.getHotelRoomTypeId(),
@@ -72,10 +71,10 @@ public class BookingInitiationServiceImpl implements BookingInitiationService{
             }
             roomAvailabilityRepository.saveAll(availabilities);
 
-            // --- B. BỔ SUNG MỚI: KIỂM TRA BẢO MẬT ADD-ONS ---
+            // --- KIỂM TRA ADD-ONS ---
             if (room.getAddOns() != null && !room.getAddOns().isEmpty()) {
                 for (InitiateBookingRequest.SelectedAddOn addOn : room.getAddOns()) {
-                    // Check xem CatalogItem này có được map với HotelRoomType này không, và phải là OPTIONAL
+                    // Check CatalogItem này có được map với HotelRoomType này không, và phải là OPTIONAL
                     boolean isValidAddOn = mappingRepository.existsByHotelRoomTypeIdAndCatalogItemIdAndItemUsage(
                             room.getHotelRoomTypeId(),
                             addOn.getCatalogItemId(),
@@ -84,7 +83,7 @@ public class BookingInitiationServiceImpl implements BookingInitiationService{
 
                     if (!isValidAddOn) {
                         log.error("Add-on không hợp lệ hoặc không được phép mua kèm: CatalogItem {}", addOn.getCatalogItemId());
-                        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // Bạn có thể tạo mã lỗi INVALID_ADD_ON
+                        throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
                     }
                 }
             }

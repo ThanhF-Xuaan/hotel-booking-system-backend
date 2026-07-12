@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/hotel/api/v1/pricing/tax-categories")
+@RequestMapping("/api/v1/pricing/tax-categories")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Pricing - Tax Category Management", description = "Các API quản lý Danh mục thuế (TaxCategory)")

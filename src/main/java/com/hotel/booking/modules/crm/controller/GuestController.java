@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/hotel/api/v1/crm/guests")
+@RequestMapping("/api/v1/crm/guests")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "CRM - Guest Management", description = "Các API quản lý thông tin khách hàng (Guest)")

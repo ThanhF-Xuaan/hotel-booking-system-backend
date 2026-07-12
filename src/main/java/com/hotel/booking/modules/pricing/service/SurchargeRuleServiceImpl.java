@@ -8,6 +8,7 @@ import com.hotel.booking.modules.inventory.repository.HotelRoomTypeRepository;
 import com.hotel.booking.modules.pricing.dto.request.SurchargeConditionRequest;
 import com.hotel.booking.modules.pricing.dto.request.SurchargeRuleCreateRequest;
 import com.hotel.booking.modules.pricing.dto.request.SurchargeRuleUpdateRequest;
+import com.hotel.booking.modules.pricing.dto.request.TimeTierRequest;
 import com.hotel.booking.modules.pricing.dto.response.SurchargeRuleResponse;
 import com.hotel.booking.modules.pricing.entity.HotelAgePolicy;
 import com.hotel.booking.modules.pricing.entity.SurchargeRule;
@@ -172,14 +173,24 @@ public class SurchargeRuleServiceImpl implements SurchargeRuleService {
         if (startDate.isAfter(endDate)) {
             throw new AppException(ErrorCode.SURCHARGE_RULE_INVALID_DATE_RANGE);
         }
-        if (ruleType == SurchargeRuleType.EXTRA_PERSON) {
-            if (agePolicyId == null) {
-                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        if (ruleType == SurchargeRuleType.EXTRA_PERSON || ruleType == SurchargeRuleType.EXTRA_BED) {
+            if (adjustmentValue.compareTo(BigDecimal.ZERO) < 0) {
+                throw new AppException(ErrorCode.SURCHARGE_RULE_VALUE_INVALID);
+            }
+            if (ruleType == SurchargeRuleType.EXTRA_PERSON && agePolicyId == null) {
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // Thiếu Age Policy
             }
         }
         if (ruleType == SurchargeRuleType.EARLY_CHECKIN || ruleType == SurchargeRuleType.LATE_CHECKOUT) {
-            if (conditions == null || conditions.getMinHours() == null) {
-                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+            if (conditions == null || conditions.getTimeTiers() == null || conditions.getTimeTiers().isEmpty()) {
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); //Thiếu cấu hình bậc thời gian
+            }
+
+            // Loop qua check xem các bậc thời gian cấu hình có bị âm tiền không
+            for (TimeTierRequest tier : conditions.getTimeTiers()) {
+                if (tier.getAdjustmentValue() == null || tier.getAdjustmentValue().compareTo(BigDecimal.ZERO) < 0) {
+                    throw new AppException(ErrorCode.SURCHARGE_RULE_VALUE_INVALID);
+                }
             }
         }
     }

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/hotel/api/v1/pricing/campaigns")
+@RequestMapping("/api/v1/pricing/campaigns")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Tag(name = "Pricing - Campaign Management", description = "Các API quản lý Chiến dịch Marketing (Campaign)")

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/hotel/api/v1/inventory/internal/jobs") // Đường dẫn nội bộ
+@RequestMapping("/api/v1/inventory/internal/jobs") // Đường dẫn nội bộ
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JobTriggerController {

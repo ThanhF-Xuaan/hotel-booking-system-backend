@@ -13,4 +13,5 @@ public interface TaxCategoryRepository extends JpaRepository<TaxCategory, Intege
     Optional<TaxCategory> findByIdAndIsDeletedFalse(Integer id);
     boolean existsByCategoryCodeAndIsDeletedFalse(String categoryCode);
     boolean existsByCategoryCodeAndIdNotAndIsDeletedFalse(String categoryCode, Integer id);
+    Optional<TaxCategory> findByCategoryCodeAndIsDeletedFalse(String categoryCode);
 }
