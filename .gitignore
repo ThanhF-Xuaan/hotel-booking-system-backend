@@ -62,5 +62,4 @@ Thumbs.db
 uploads/
 !uploads/.gitkeep
 
-.agents/
 docs/
